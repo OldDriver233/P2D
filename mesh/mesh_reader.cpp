@@ -52,8 +52,6 @@ void gen_part(part &p, int elem_type, const std::vector<std::size_t> &elem_nodes
 void mesh_reader::read(mesh& m) {
     gmsh::initialize();
     gmsh::open(this->filename);
-    std::vector<std::pair<int, int>> entities;
-    gmsh::model::getEntities(entities);
     std::vector<std::size_t> node_tags;
     std::vector<double> node_coords, node_params;
     gmsh::model::mesh::getNodes(node_tags, node_coords, node_params);
@@ -66,6 +64,8 @@ void mesh_reader::read(mesh& m) {
         it++;
     }
 
+    std::vector<std::pair<int, int>> entities;
+    gmsh::model::getEntities(entities);
     for(auto e: entities) {
         int dim = e.first, tag = e.second;
 

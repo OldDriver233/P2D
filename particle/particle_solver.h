@@ -8,6 +8,7 @@
 #include <utility>
 #include "../shaping/primitive_type.h"
 #include "stiffness_generator.h"
+#include "../constants/constant.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -20,11 +21,11 @@ public:
     VectorXd result;
     stiffness_generator gen;
     const int iter = 10;
-    const double tolerance = 1e-12;
-    const double dt = 1.0;
-    const double d_ref = 3.9e-14;
-    const double d = 3.9e-14;
-    const double r = 1e-5;
+    const double tolerance = constant::tolerance;
+    const double dt = constant::dt;
+    const double d_ref = constant::d_ref;
+    const double d = constant::d;
+    const double r = constant::r;
 
     explicit particle_solver(const VectorXd& coord): point_coord(coord) {
         gen = stiffness_generator(coord, primitive, dt, d_ref, d, r);

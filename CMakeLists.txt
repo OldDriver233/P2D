@@ -30,6 +30,8 @@ add_executable(fem main.cpp
         particle/stiffness_generator.h
         mesh/mesh_reader.cpp
         mesh/mesh_reader.h
+        constants/constant.cpp
+        constants/constant.h
 )
 
 target_link_libraries(fem "libgmsh.so")

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cmath>
 
-using Eigen::seq;
 
 stiffness_generator::stiffness_generator(VectorXd points, Primitive p, double dt, double d_ref, double d, double r) : points(
         points), dt(dt), d_ref(d_ref), d(d), r(r) {
@@ -49,7 +48,7 @@ void stiffness_generator::generate(Eigen::Ref<MatrixXd> u, MatrixXd &du) {
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double d_s = d / d_ref;
-    double eff_1 = r * r / d_ref / dt;
+    double eff_1 = (r * r / d_ref) / dt;
     double eff_2 = d_s;
 
     for (int i = 0; i < elem_cnt; i++) {
