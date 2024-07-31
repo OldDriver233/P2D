@@ -9,11 +9,11 @@ double clamp(double x, double lower, double upper) {
 }
 
 double j_border(double c) {
-    return (c - c * c) * 1e-7;
+    return std::sqrt(c * (1.0 - c)) * 1e-7;
 }
 
 double d_j_border(double c) {
-    return (1.0 - 2.0 * c) * 1e-7;
+    return ((1.0 - 2.0 * c) / (2 * std::sqrt(c * (1.0 - c)))) * 1e-7;
 }
 
 void particle_solver::calc(Eigen::Ref<MatrixXd> u) {

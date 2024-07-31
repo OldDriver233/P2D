@@ -25,7 +25,7 @@ int main()
     VectorXd coord = VectorXd::LinSpaced(101, 0, 1);
     auto s = particle_solver(VectorXd::LinSpaced(101, 0, 1));
     MatrixXd u = MatrixXd::Ones(101, 1) * 0.3;
-    for(int i = 0; i < 300; i++) {
+    for(int i = 0; i < constant::step; i++) {
         s.calc(u);
     }
 

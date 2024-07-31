@@ -6,6 +6,7 @@
 #define FEM_STIFFNESS_GENERATOR_H
 #include <eigen3/Eigen/Dense>
 #include "../shaping/primitive_type.h"
+#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <vector>
 
 using Eigen::VectorXd;
@@ -25,7 +26,7 @@ public:
     stiffness_generator() = default;
     stiffness_generator(VectorXd, Primitive, double, double, double, double);
 
-    void generate(Eigen::Ref<MatrixXd>, MatrixXd&);
+    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);
 };
 
 
