@@ -5,11 +5,16 @@ project(fem)
 #find_package(pybind11 CONFIG REQUIRED)
 
 option(DEBUG "Enable debug" OFF)
+option(USE_BLAS_LAPACK "Enable blas and lapack" OFF)
 
-if (DEBUG)
+if(DEBUG)
         set(CMAKE_CXX_FLAGS "-Og -g -Wall -Wextra")
 else()
-        set(CMAKE_CXX_FLAGS "-O2")
+        set(CMAKE_CXX_FLAGS "-O3 -march=native")
+endif()
+
+if (USE_BLAS_LAPACK)
+        add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
@@ -18,6 +23,7 @@ find_package(Eigen3 REQUIRED)
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(OpenMP REQUIRED)
 
 INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
 
@@ -35,6 +41,6 @@ add_executable(fem main.cpp
         constants/constant.h
 )
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json)
+target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so")
 
 install(TARGETS fem DESTINATION .)

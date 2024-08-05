@@ -9,11 +9,11 @@ double clamp(double x, double lower, double upper) {
 }
 
 double j_border(double c) {
-    return std::sqrt(c * (1.0 - c)) * 1e-7;
+    return std::sqrt(c * (1.0 - c)) * 1e-6;
 }
 
 double d_j_border(double c) {
-    return ((1.0 - 2.0 * c) / (2 * std::sqrt(c * (1.0 - c)))) * 1e-7;
+    return ((1.0 - 2.0 * c) / (2 * std::sqrt(c * (1.0 - c)))) * 1e-6;
 }
 
 void particle_solver::calc(Eigen::Ref<MatrixXd> u) {
@@ -32,7 +32,7 @@ void particle_solver::calc(Eigen::Ref<MatrixXd> u) {
         gen.generated_K(element_cnt, element_cnt) -= d_j_border(u(element_cnt, 0)) * eff;
         gen.generated_res(element_cnt) -= j_border(u(element_cnt, 0)) * eff;
 
-        MatrixXd delta = -gen.generated_K.fullPivLu().solve(gen.generated_res);
+        MatrixXd delta = -gen.generated_K.lu().solve(gen.generated_res);
         du += delta;
         u += delta;
         double norm = delta.norm();

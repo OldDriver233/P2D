@@ -1,4 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-np.loadtxt('build/out.csv', delimiter=',')
+y = np.loadtxt('build/out.csv', delimiter=',')
+
+plt.plot(y[:, 0], y[:, 1])
+plt.show()

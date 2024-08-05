@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/src/Core/Matrix.h>
 #include <iostream>
 #include <cmath>
+#include <omp.h>
 
 
 stiffness_generator::stiffness_generator(VectorXd points, Primitive p, double dt, double d_ref, double d, double r) : points(
@@ -52,6 +53,7 @@ void stiffness_generator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     double eff_1 = (r * r / d_ref) / dt;
     double eff_2 = d_s;
 
+    //#pragma omp parallel for num_threads(8)
     for (int i = 0; i < elem_cnt; i++) {
         MatrixXd e_u = u({i, i + 1}, 0);
         MatrixXd e_du = du({i, i + 1}, 0);
@@ -77,8 +79,10 @@ void stiffness_generator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
 
         for (int j = 0; j < n; j++) {
             for (int l = 0; l < n; l++) {
+                //#pragma omp atomic
                 this->generated_K(i + j, i + l) += e_k(j, l);
             }
+            //#pragma omp atomic
             this->generated_res(i + j) += e_r(j);
         }
     }
