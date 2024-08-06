@@ -9,11 +9,11 @@ double clamp(double x, double lower, double upper) {
 }
 
 double j_border(double c) {
-    return std::sqrt(c * (1.0 - c)) * 1e-6;
+    return std::sqrt(c * (1.0 - c)) * 0.3478 * 0.04;
 }
 
 double d_j_border(double c) {
-    return ((1.0 - 2.0 * c) / (2 * std::sqrt(c * (1.0 - c)))) * 1e-6;
+    return ((1.0 - 2.0 * c) / (2 * std::sqrt(c * (1.0 - c)))) * 0.3478 * 0.04;
 }
 
 void particle_solver::calc(Eigen::Ref<MatrixXd> u) {
@@ -23,7 +23,7 @@ void particle_solver::calc(Eigen::Ref<MatrixXd> u) {
     int iter_time = 0;
     double ratio = 999999.0;
     double first_norm;
-    double eff = M_PI * 4.0 * r / d_ref;
+    double eff = M_PI * 4.0;
     MatrixXd du = MatrixXd::Zero(element_cnt + 1, 1);
 
     while(iter_time < iter && ratio > tolerance) {

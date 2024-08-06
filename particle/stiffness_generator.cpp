@@ -50,8 +50,8 @@ void stiffness_generator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double d_s = d / d_ref;
-    double eff_1 = (r * r / d_ref) / dt;
-    double eff_2 = d_s;
+    double eff_1 = 1.0 / dt;
+    double eff_2 = 1.0;
 
     //#pragma omp parallel for num_threads(8)
     for (int i = 0; i < elem_cnt; i++) {
