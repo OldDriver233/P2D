@@ -21,10 +21,10 @@ public:
     std::vector<double> cached_det_J;
     MatrixXd generated_K;
     VectorXd generated_res;
-    double dt, d_ref, d, r;
+    double dt, r;
 
     stiffness_generator() = default;
-    stiffness_generator(VectorXd, Primitive, double, double, double, double);
+    stiffness_generator(VectorXd, Primitive, double, double);
 
     void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);
 };

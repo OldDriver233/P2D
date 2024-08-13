@@ -7,8 +7,8 @@
 #include <omp.h>
 
 
-stiffness_generator::stiffness_generator(VectorXd points, Primitive p, double dt, double d_ref, double d, double r) : points(
-        points), dt(dt), d_ref(d_ref), d(d), r(r) {
+stiffness_generator::stiffness_generator(VectorXd points, Primitive p, double dt, double r) : points(
+        points), dt(dt), r(r) {
     switch (p) {
         case Primitive::Line2:
             dim = 1;
@@ -49,7 +49,6 @@ void stiffness_generator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     this->generated_res = VectorXd::Zero(elem_cnt + 1);
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
-    double d_s = d / d_ref;
     double eff_1 = 1.0 / dt;
     double eff_2 = 1.0;
 
