@@ -1,4 +1,5 @@
-/cmake*
-/build
+/core/cmake*
+/core/build
 /.idea
 /.vscode
+.clangd

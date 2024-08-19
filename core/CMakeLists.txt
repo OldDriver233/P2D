@@ -17,7 +17,7 @@ if (USE_BLAS_LAPACK)
         add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
 endif()
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(Eigen3 REQUIRED)
 find_package(BLAS REQUIRED)
@@ -41,6 +41,15 @@ add_executable(fem main.cpp
         constants/constant.h
 )
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so")
+find_path(HIREDIS_HEADER hiredis)
+target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
+
+find_path(REDIS_PLUS_PLUS_HEADER sw)
+target_include_directories(fem PUBLIC ${REDIS_PLUS_PLUS_HEADER})
+
+find_library(HIREDIS_LIB hiredis)
+find_library(REDIS_PLUS_PLUS_LIB redis++)
+
+target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so" ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 
 install(TARGETS fem DESTINATION .)

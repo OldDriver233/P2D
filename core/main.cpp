@@ -5,10 +5,14 @@
 #include "mesh/mesh_reader.h"
 #include "particle/particle_solver.h"
 #include <eigen3/Eigen/Dense>
+#include <sw/redis++/redis.h>
 #include <vector>
+#include <sw/redis++/redis++.h>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+
+using namespace sw::redis;
 
 void check_mesh() {
     mesh m;
@@ -33,18 +37,15 @@ int main()
     }
     us.push_back(u(100));
 
-    std::fstream fs;
-    fs.open("out.csv", std::ios::out);
-    /*
-    for(int i = 0; i < 101; i++) {
-        fs<<coord(i)<<", "<<u(i)<<std::endl;
-    }
-    */
-    for(int i = 0; i < us.size(); i++) {
-        fs<<i<<", "<<us[i]<<std::endl;
-    }
+    std::cout<<"Calculation complete. Writing to redis..."<<std::endl;
     
-    fs.close();
+    auto redis = Redis("tcp://127.0.0.1:6379");
+    auto pipe = redis.pipeline();
+    pipe.del("us");
+    for(int i = 0; i < us.size(); i++) {
+        pipe.rpush("us", std::to_string(us[i]));
+    }
+    pipe.exec();
     return 0;
 }
 
