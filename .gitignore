@@ -3,3 +3,9 @@
 /.idea
 /.vscode
 .clangd
+/web/fem-webui/node_modules
+/web/fem-webui/.vscode
+/web/fem-backend/node_modules
+/web/fem-backend/dist
+
+# TODO: will separate the web part to a submodule.
