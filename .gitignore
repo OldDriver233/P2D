@@ -7,5 +7,6 @@
 /web/fem-webui/.vscode
 /web/fem-backend/node_modules
 /web/fem-backend/dist
+/web/fem-backend/build
 
 # TODO: will separate the web part to a submodule.

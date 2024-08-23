@@ -1,31 +1,35 @@
-import fastify from 'fastify'
-import Fastify from 'fastify'
-import {createClient} from 'redis'
+import { Elysia, error, t } from "elysia"
+import { createClient } from "redis"
+import { cors } from '@elysiajs/cors'
 
+const redis = createClient()
 
-const startServer = async () => {
-    const client = createClient()
-    client.on('error', (err) => console.log('Redis Client Error', err))
+redis.connect()
 
-    await client.connect()
+const app = new Elysia()
+  .use(cors())
+  .get("/api/result", async({ set, headers }) => {
+    set.headers["access-control-allow-origin"] = "*"
 
-    const server = Fastify({
-        logger: true
+    console.log(headers)
+    const lastUpdate = await redis.get("us:last_update_at")
+    if (lastUpdate === null) return error(404, "Not Found")
+    else if(parseFloat(lastUpdate) <= headers.last_update_at) return error(304, "Not Modified")
+
+    const result = await redis.lRange("us", 0, -1)
+    return {
+      lastUpdateAt: parseFloat(lastUpdate),
+      result: result,
+    }
+  }, {
+    headers: t.Object({
+      last_update_at: t.Number(),
     })
+  })
+  .listen(3000)
 
-    server.get('/api/result', async (request, reply) => {
-        const raw_result = await client.lRange('us', 0, -1)
-        const result = raw_result.map((item) => Number.parseFloat(item))
-        reply.header('Access-Control-Allow-Origin', '*')
-        reply.send(result)
-    })
+console.log(
+  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+);
 
-    server.listen({port: 3000}, function (err, _) {
-        if (err) {
-            server.log.error(err)
-            process.exit(1)
-        }
-    })
-}
-
-startServer()
+export type App = typeof app

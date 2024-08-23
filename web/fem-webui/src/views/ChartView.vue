@@ -14,7 +14,7 @@ import { ref, provide } from "vue";
 import axios from "axios";
 import type { Ref } from "vue";
 import type { ECBasicOption } from "echarts/types/dist/shared";
-  
+
 use([
   CanvasRenderer,
   LineChart,
@@ -25,14 +25,23 @@ provide(THEME_KEY, "light");
 
 const x_axis: Ref<number[]> = ref([])
 const data_points: Ref<number[]> = ref([])
+const last_update: Ref<number> = ref(0)
 
-axios.get("http://127.0.0.1:3000/api/result")
+axios.get("http://localhost:3000/api/result", {headers: {last_update_at: last_update.value}})
   .then(function (resp) {
-    data_points.value = resp.data
+    last_update.value = resp.data.lastUpdateAt
+    data_points.value = resp.data.result
     for(var i = 0; i < data_points.value.length; i++) {
       x_axis.value.push(i)
     }
     console.log(x_axis.value)
+  })
+  .catch(function (error) {
+    if (error.response) {
+      if (error.response.status === 304) {
+        console.log("No new data")
+      }
+    }
   })
   
 const option: Ref<ECBasicOption> = ref({

@@ -4,9 +4,8 @@ import { ElContainer, ElHeader, ElMain, ElButton, ElLink, ElAside, ElMenu } from
 import { Edit } from '@element-plus/icons-vue';
 
 const router = useRouter()
-const route = useRoute()
 
-const router_goto = (e: any) => {
+const router_goto = (e: string) => {
   router.push(e)
 }
 </script>

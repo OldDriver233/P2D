@@ -1,20 +1,19 @@
 {
   "name": "fem-backend",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "@types/node": "^22.4.1",
-    "tslint": "^5.20.1",
-    "typescript": "^5.5.4"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outfile build/server --compile"
   },
   "dependencies": {
-    "fastify": "^4.28.1",
+    "@elysiajs/cors": "^1.1.0",
+    "@elysiajs/eden": "^1.1.2",
+    "elysia": "latest",
     "redis": "^4.7.0"
-  }
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "module": "src/index.js"
 }

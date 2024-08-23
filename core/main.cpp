@@ -8,6 +8,7 @@
 #include <sw/redis++/redis.h>
 #include <vector>
 #include <sw/redis++/redis++.h>
+#include <chrono>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -18,6 +19,13 @@ void check_mesh() {
     mesh m;
     auto mr = mesh_reader("macro2d.msh");
     mr.read(m);
+}
+
+std::time_t get_timestamp() {
+    auto tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    auto stamp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+    std::time_t timestamp = stamp.count();
+    return timestamp;
 }
 
 int main()
@@ -45,6 +53,7 @@ int main()
     for(int i = 0; i < us.size(); i++) {
         pipe.rpush("us", std::to_string(us[i]));
     }
+    pipe.set("us:last_update_at", std::to_string(get_timestamp()));
     pipe.exec();
     return 0;
 }
