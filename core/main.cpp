@@ -4,6 +4,7 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_reader.h"
 #include "particle/particle_solver.h"
+#include "full_cell/full_cell_solver.h"
 #include <eigen3/Eigen/Dense>
 #include <sw/redis++/redis.h>
 #include <vector>
@@ -28,7 +29,7 @@ std::time_t get_timestamp() {
     return timestamp;
 }
 
-int main()
+void calc_particle()
 {
     //if(true) {
     //    check_mesh();
@@ -55,7 +56,33 @@ int main()
     }
     pipe.set("us:last_update_at", std::to_string(get_timestamp()));
     pipe.exec();
-    return 0;
+}
+
+void calc_separator() {
+    constant::read();
+    VectorXd coord = VectorXd::LinSpaced(101, 0, 1);
+    auto s = full_cell_solver(VectorXd::LinSpaced(101, 0, 1));
+    MatrixXd u = MatrixXd::Zero(202, 1);
+    for(int i = 101; i < 202; i++) {
+        u(i) = 1000.0;
+    }
+
+    for(int i = 0; i < constant::step; i++) {
+        s.calc(u);
+    }
+
+    auto redis = Redis("tcp://127.0.0.1:6379");
+    auto pipe = redis.pipeline();
+    pipe.del("us");
+    for(int i = 0; i < u.size() / 2; i++) {
+        pipe.rpush("us", std::to_string(u(i)));
+    }
+    pipe.set("us:last_update_at", std::to_string(get_timestamp()));
+    pipe.exec();
+}
+
+int main() {
+    calc_separator();
 }
 
 /*

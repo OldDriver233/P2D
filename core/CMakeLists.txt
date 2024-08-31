@@ -8,7 +8,7 @@ option(DEBUG "Enable debug" OFF)
 option(USE_BLAS_LAPACK "Enable blas and lapack" OFF)
 
 if(DEBUG)
-        set(CMAKE_CXX_FLAGS "-Og -pg -Wall -Wextra")
+        set(CMAKE_CXX_FLAGS "-Og -pg -Wall -Wextra -g")
 else()
         set(CMAKE_CXX_FLAGS "-O3 -march=native")
 endif()
@@ -29,6 +29,7 @@ INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
 
 add_executable(fem main.cpp
         integration/integration_shapes.h
+        shaping/primitives.cpp
         shaping/primitives.h
         particle/particle_solver.cpp
         particle/particle_solver.h
@@ -39,6 +40,11 @@ add_executable(fem main.cpp
         mesh/mesh_reader.h
         constants/constant.cpp
         constants/constant.h
+        full_cell/full_cell_solver.cpp
+        full_cell/full_cell_solver.h
+        full_cell/stiffness/stiffness_base.h
+        full_cell/stiffness/stiffness_separator.h
+        full_cell/stiffness/stiffness_separator.cpp
 )
 
 find_path(HIREDIS_HEADER hiredis)

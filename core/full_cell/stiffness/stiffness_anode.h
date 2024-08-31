@@ -1,0 +1,18 @@
+#ifndef FEM_STIFFNESS_ANODE_H
+#define FEM_STIFFNESS_ANODE_H
+#include <eigen3/Eigen/Dense>
+#include "stiffness_base.h"
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
+class stiffness_anode: public stiffness_base{
+public:
+    stiffness_anode() {}
+    stiffness_anode(VectorXd points): stiffness_base(points) {
+    }
+    ~stiffness_anode() {}
+    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<VectorXd>) override;
+};
+
+#endif //FEM_STIFFNESS_ANODE_H
