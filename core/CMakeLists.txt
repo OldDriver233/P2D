@@ -45,6 +45,14 @@ add_executable(fem main.cpp
         full_cell/stiffness/stiffness_base.h
         full_cell/stiffness/stiffness_separator.h
         full_cell/stiffness/stiffness_separator.cpp
+        full_cell/stiffness/stiffness_anode.h
+        full_cell/stiffness/stiffness_anode.cpp
+        full_cell/stiffness/stiffness_cathode.h
+        full_cell/stiffness/stiffness_cathode.cpp
+        functions/functions.h
+        functions/bv.cpp
+        functions/j0.cpp
+        functions/uoc.cpp
 )
 
 find_path(HIREDIS_HEADER hiredis)

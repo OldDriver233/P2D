@@ -9,7 +9,7 @@ using Eigen::VectorXd;
 class stiffness_anode: public stiffness_base{
 public:
     stiffness_anode() {}
-    stiffness_anode(VectorXd points): stiffness_base(points) {
+    stiffness_anode(VectorXd points, int an, int ca): stiffness_base(points, an, ca) {
     }
     ~stiffness_anode() {}
     void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<VectorXd>) override;

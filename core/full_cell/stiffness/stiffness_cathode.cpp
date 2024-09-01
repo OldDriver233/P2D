@@ -1,9 +1,9 @@
-#include "stiffness_anode.h"
+#include "stiffness_cathode.h"
 #include "../../constants/constant.h"
 #include "../../functions/functions.h"
 #include <iostream>
 
-void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, Eigen::Ref<MatrixXd> k, Eigen::Ref<VectorXd> res) {
+void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, Eigen::Ref<MatrixXd> k, Eigen::Ref<VectorXd> res) {
     int dim = 1, n = 2;
     int dof_cnt = this->points.size();
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
@@ -11,19 +11,20 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double dt = constant::dt;
-    double R_p = 2e-6, d_eff = 4.1498e-11, ds_eff = 3.9e-14, sigma_eff = 5.4154, epsilon = 0.485, epsilon_e = 0.4824, k_eff = 0.06608, kd_eff = 2.1596e-3, a = 723600;
+    double R_p = 2e-6, d_eff = 1.6478e-11, ds_eff = 1e-14, sigma_eff = 12.1173, epsilon = 0.385, epsilon_s = 0.59, k_eff = 0.02624, kd_eff = 8.5755e-4, a = 885000;
     const double F = 96485.3329;
 
-    for(int i = 0; i < this->surface_an_sep; i++) {
+    for(int i = this->surface_ca_sep; i < elem_cnt; i++) {
+        int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
         MatrixXd e_p = u({i, i + 1}, 0); // phi_e
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
-        MatrixXd e_s = u({2 * dof_cnt + i, 2 * dof_cnt + i + 1}, 0); // phi_s
-        MatrixXd e_q = u({2 * dof_cnt + dof_cnt_eff + i, 2 * dof_cnt + dof_cnt_eff + i + 1}, 0); // j
-        MatrixXd e_v = u({2 * dof_cnt + 2 * dof_cnt_eff + i, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1}, 0); // c^avg
-        MatrixXd e_a = u({2 * dof_cnt + 3 * dof_cnt_eff + i, 2 * dof_cnt + 3 * dof_cnt_eff + i + 1}, 0); // c^*
+        MatrixXd e_s = u({2 * dof_cnt + idx, 2 * dof_cnt + idx + 1}, 0); // phi_s
+        MatrixXd e_q = u({2 * dof_cnt + dof_cnt_eff + idx, 2 * dof_cnt + dof_cnt_eff + idx + 1}, 0); // j
+        MatrixXd e_v = u({2 * dof_cnt + 2 * dof_cnt_eff + idx, 2 * dof_cnt + 2 * dof_cnt_eff + idx + 1}, 0); // c^avg
+        MatrixXd e_a = u({2 * dof_cnt + 3 * dof_cnt_eff + idx, 2 * dof_cnt + 3 * dof_cnt_eff + idx + 1}, 0); // c^*
 
         MatrixXd e_dc = du({dof_cnt + i, dof_cnt + i + 1}, 0);
-        MatrixXd e_dv = du({2 * dof_cnt + 2 * dof_cnt_eff + i, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1}, 0);
+        MatrixXd e_dv = du({2 * dof_cnt + 2 * dof_cnt_eff + idx, 2 * dof_cnt + 2 * dof_cnt_eff + idx + 1}, 0);
 
         MatrixXd e_kvq = MatrixXd::Identity(n, n) * 3 / R_p;
         MatrixXd e_kvv = MatrixXd::Identity(n, n) / dt;
@@ -79,11 +80,11 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
             e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det - a * F * N * N_T * e_q * w(j) * det;
 
             // q part
-            double j0_v = j0(e_c(j), e_a(j), 1);
-            double d_j0_a_v = d_j0_a(e_c(j), e_a(j), 1);
-            double d_j0_e_v = d_j0_e(e_c(j), e_a(j), 1);
-            double uoc_v = uoc(e_a(j) / 30555.0, 1);
-            double d_uoc_v = d_uoc(e_a(j) / 30555.0, 1) / 30555.0;
+            double j0_v = j0(e_c(j), e_a(j), 2);
+            double d_j0_a_v = d_j0_a(e_c(j), e_a(j), 2);
+            double d_j0_e_v = d_j0_e(e_c(j), e_a(j), 2);
+            double uoc_v = uoc(e_a(j) / 51554.0, 2);
+            double d_uoc_v = d_uoc(e_a(j) / 51554.0, 2) / 51554.0;
             double bv_v = bv(e_s(j) - e_p(j) - uoc_v);
             double d_bv_v = d_bv(e_s(j) - e_p(j) - uoc_v);
 
@@ -98,33 +99,33 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
             for(int l = 0; l < n; l++) {
                 k(i + j, i + l) += e_kpp(j, l);
                 k(i + j, i + l + dof_cnt) += e_kpc(j, l);
-                k(i + j, i + l + 2 * dof_cnt + dof_cnt_eff) += e_kpq(j, l);
+                k(i + j, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_kpq(j, l);
 
                 k(i + j + dof_cnt, i + l + dof_cnt) += e_kcc(j, l);
-                k(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff) += e_kcq(j, l); 
+                k(i + j + dof_cnt, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_kcq(j, l); 
 
-                k(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt) += e_kss(j, l);
-                k(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff) += e_ksq(j, l);
+                k(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt) += e_kss(j, l);
+                k(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_ksq(j, l);
 
-                k(i + j + 2 * dof_cnt + dof_cnt_eff, i + l) += e_kqp(j, l);
-                k(i + j + 2 * dof_cnt + dof_cnt_eff, i + l + dof_cnt) += e_kqc(j, l);
-                k(i + j + 2 * dof_cnt + dof_cnt_eff, i + l + 2 * dof_cnt) += e_kqs(j, l);
-                k(i + j + 2 * dof_cnt + dof_cnt_eff, i + l + 2 * dof_cnt + dof_cnt_eff) += e_kqq(j, l);
-                k(i + j + 2 * dof_cnt + dof_cnt_eff, i + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kqa(j, l);
+                k(idx + j + 2 * dof_cnt + dof_cnt_eff, i + l) += e_kqp(j, l);
+                k(idx + j + 2 * dof_cnt + dof_cnt_eff, i + l + dof_cnt) += e_kqc(j, l);
+                k(idx + j + 2 * dof_cnt + dof_cnt_eff, idx + l + 2 * dof_cnt) += e_kqs(j, l);
+                k(idx + j + 2 * dof_cnt + dof_cnt_eff, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_kqq(j, l);
+                k(idx + j + 2 * dof_cnt + dof_cnt_eff, idx + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kqa(j, l);
 
-                k(i + j + 2 * dof_cnt + 2 * dof_cnt_eff, i + l + 2 * dof_cnt + dof_cnt_eff) += e_kvq(j, l);
-                k(i + j + 2 * dof_cnt + 2 * dof_cnt_eff, i + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kvv(j, l);
+                k(idx + j + 2 * dof_cnt + 2 * dof_cnt_eff, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_kvq(j, l);
+                k(idx + j + 2 * dof_cnt + 2 * dof_cnt_eff, idx + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kvv(j, l);
 
-                k(i + j + 2 * dof_cnt + 3 * dof_cnt_eff, i + l + 2 * dof_cnt + dof_cnt_eff) += e_kaq(j, l);
-                k(i + j + 2 * dof_cnt + 3 * dof_cnt_eff, i + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kav(j, l);
-                k(i + j + 2 * dof_cnt + 3 * dof_cnt_eff, i + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kaa(j, l);
+                k(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff, idx + l + 2 * dof_cnt + dof_cnt_eff) += e_kaq(j, l);
+                k(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff, idx + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kav(j, l);
+                k(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff, idx + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kaa(j, l);
 
                 res(i + j) += e_rp(j);
                 res(i + j + dof_cnt) += e_rc(j);
-                res(i + j + 2 * dof_cnt) += e_rs(j);
-                res(i + j + 2 * dof_cnt + dof_cnt_eff) += e_rq(j);
-                res(i + j + 2 * dof_cnt + 2 * dof_cnt_eff) += e_rv(j);
-                res(i + j + 2 * dof_cnt + 3 * dof_cnt_eff) += e_ra(j);
+                res(idx + j + 2 * dof_cnt) += e_rs(j);
+                res(idx + j + 2 * dof_cnt + dof_cnt_eff) += e_rq(j);
+                res(idx + j + 2 * dof_cnt + 2 * dof_cnt_eff) += e_rv(j);
+                res(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff) += e_ra(j);
             }
         }
 

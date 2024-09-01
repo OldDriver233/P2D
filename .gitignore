@@ -8,5 +8,5 @@
 /web/fem-backend/node_modules
 /web/fem-backend/dist
 /web/fem-backend/build
-
+core/.cache
 # TODO: will separate the web part to a submodule.

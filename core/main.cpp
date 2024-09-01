@@ -59,18 +59,40 @@ void calc_particle()
 }
 
 void calc_separator() {
+    int pt_size = 16;
+    int an = 6, ca = 10;
+    int eff_size = pt_size - (ca - an - 1);
     constant::read();
-    VectorXd coord = VectorXd::LinSpaced(101, 0, 1);
-    auto s = full_cell_solver(VectorXd::LinSpaced(101, 0, 1));
-    MatrixXd u = MatrixXd::Zero(202, 1);
-    for(int i = 101; i < 202; i++) {
+    VectorXd coord = VectorXd::LinSpaced(pt_size, 0, 1e-5);
+    auto s = full_cell_solver(VectorXd::LinSpaced(pt_size, 0, 1e-5));
+    MatrixXd u = MatrixXd::Zero(2 * pt_size + 4 * eff_size, 1);
+    for(int i = pt_size; i < 2 * pt_size; i++) {
         u(i) = 1000.0;
+    }
+    for(int i = 2 * pt_size; i < 2 * pt_size + an + 1; i++) {
+        u(i) = 0.1692;
+    }
+    for(int i = 2 * pt_size + an + 1; i < 2 * pt_size + eff_size; i++) {
+        u(i) = 4.24197;
+    }
+    for(int i = 2 * pt_size + 2 * eff_size; i < 2 * pt_size + 2 * eff_size + an + 1; i++) {
+        u(i) = 26128.0;
+    }
+    for(int i = 2 * pt_size + 2 * eff_size + an + 1; i < 2 * pt_size + 3 * eff_size; i++) {
+        u(i) = 25751.0;
+    }
+    for(int i = 2 * pt_size + 3 * eff_size; i < 2 * pt_size + 3 * eff_size + an + 1; i++) {
+        u(i) = 26128.0;
+    }
+    for(int i = 2 * pt_size + 3 * eff_size + an + 1; i < 2 * pt_size + 4 * eff_size; i++) {
+        u(i) = 25751.0;
     }
 
     for(int i = 0; i < constant::step; i++) {
         s.calc(u);
     }
-
+    std::cout<<u<<std::endl;
+    /*
     auto redis = Redis("tcp://127.0.0.1:6379");
     auto pipe = redis.pipeline();
     pipe.del("us");
@@ -79,6 +101,7 @@ void calc_separator() {
     }
     pipe.set("us:last_update_at", std::to_string(get_timestamp()));
     pipe.exec();
+    */
 }
 
 int main() {

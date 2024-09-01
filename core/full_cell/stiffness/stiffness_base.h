@@ -23,7 +23,7 @@ public:
         this->cached_matrix_dN.clear();
         this->cached_det_J.clear();
     }
-    stiffness_base(VectorXd points): points(points) {
+    stiffness_base(VectorXd points, int an, int ca): points(points), surface_an_sep(an), surface_ca_sep(ca) {
         int dim = 1, n = 2;
         long elem_cnt = points.size() - 1;
         MatrixXd x = get_integration_point(dim, n);

@@ -10,7 +10,7 @@ using Eigen::VectorXd;
 class stiffness_separator: public stiffness_base{
 public:
     stiffness_separator() {}
-    stiffness_separator(VectorXd points): stiffness_base(points) {
+    stiffness_separator(VectorXd points, int an, int ca): stiffness_base(points, an, ca) {
     }
     ~stiffness_separator() {}
     void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<VectorXd>) override;
