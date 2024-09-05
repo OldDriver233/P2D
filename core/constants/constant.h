@@ -6,13 +6,35 @@ class constant {
 public:
     static double tolerance;
     static double dt;
-    static double r;
     static int step;
+    static double epsilon_e_an;
+    static double epsilon_s_an;
+    static double epsilon_e_ca;
+    static double epsilon_s_ca;
+    static double epsilon_e_sep;
+    static double epsilon_s_sep;
+    static double sigma_an;
+    static double sigma_ca;
+    static double sigma_sep;
+    static double de_an;
+    static double de_ca;
+    static double de_sep;
+    static double ds_an;
+    static double ds_ca;
+    static double ds_sep;
+    static double r_p;
+    static double l_ref;
+    static double j_ref;
+    static double r;
     static int type;
     static double delta_u;
     static double k;
-    static double max_c;
-    static double initial_c;
+    static double R, T, F;
+    static double c_max_an;
+    static double c_max_ca;
+    static double c_int_an;
+    static double c_int_ca;
+    static double ce_int;
 
     static void read();
 };

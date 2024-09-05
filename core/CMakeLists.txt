@@ -8,7 +8,7 @@ option(DEBUG "Enable debug" OFF)
 option(USE_BLAS_LAPACK "Enable blas and lapack" OFF)
 
 if(DEBUG)
-        set(CMAKE_CXX_FLAGS "-Og -pg -Wall -Wextra -g")
+        set(CMAKE_CXX_FLAGS "-O0 -pg -Wall -Wextra -g")
 else()
         set(CMAKE_CXX_FLAGS "-O3 -march=native")
 endif()

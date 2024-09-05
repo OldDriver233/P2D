@@ -1,5 +1,6 @@
 #include "stiffness_separator.h"
 #include "../../constants/constant.h"
+#include <cmath>
 #include <iostream>
 
 void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, Eigen::Ref<MatrixXd>k, Eigen::Ref<VectorXd> res) {
@@ -9,7 +10,12 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double dt = constant::dt;
-    double k_eff = 0.2988, kd_eff = 9.053e-3, d_eff = 7.5e-10, epsilon = 0.724;
+    double eff_mat = std::pow(constant::epsilon_e_sep, 4);
+    double k_ref = 1.1046 * eff_mat;
+    double k_eff = 1.1046 * eff_mat / k_ref, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+    double d_ref = constant::de_sep * eff_mat;
+    double d_eff = constant::de_sep / d_ref * eff_mat, epsilon = constant::epsilon_e_sep;
+    double ce_int = constant::ce_int;
 
     for(int i = this->surface_an_sep; i < this->surface_ca_sep; i++) {
         MatrixXd e_p = u({i, i + 1}, 0);
@@ -37,10 +43,13 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
             e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det;
             e_kpp += k_eff * dN * dN_T * w(j) * det;
             e_kpc += -kd_eff / lower * dN * dN_T * w(j) * det + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
+            //e_kpp = MatrixXd::Identity(n, n);
 
             // c part
-            e_rc += epsilon * N * N_T * e_dc * w(j) * det / dt + d_eff * dN * dN_T * e_c * w(j) * det;
-            e_kcc += epsilon * N * N_T * w(j) * det / dt + d_eff * dN * dN_T * w(j) * det;
+            double eff_1 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
+            e_rc += epsilon * eff_1 * N * N_T * e_dc * w(j) * det + d_eff * dN * dN_T * e_c * w(j) * det;
+            e_kcc += epsilon * eff_1 * N * N_T * w(j) * det + d_eff * dN * dN_T * w(j) * det;
+            //e_kcc = MatrixXd::Identity(n, n);
         }
 
         for(int j = 0; j < n; j++) {

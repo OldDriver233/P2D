@@ -6,6 +6,7 @@
 #include "stiffness/stiffness_separator.h"
 #include "stiffness/stiffness_anode.h"
 #include "stiffness/stiffness_cathode.h"
+#include "../constants/constant.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -16,14 +17,14 @@ public:
     VectorXd point_coord;
     VectorXd result;
     const int iter = 10;
-    const double tolerance = 1e-12;
-    int an = 6, ca = 10;
+    const double tolerance = constant::tolerance;
+    int an, ca;
     stiffness_separator sep;
     stiffness_anode anode;
     stiffness_cathode cathode;
     int step = 0;
 
-    explicit full_cell_solver(const VectorXd& coord): point_coord(coord) {
+    full_cell_solver(int an, int ca, const VectorXd& coord): point_coord(coord), an(an), ca(ca) {
         sep = stiffness_separator(coord, an, ca);
         anode = stiffness_anode(coord, an, ca);
         cathode = stiffness_cathode(coord, an, ca);

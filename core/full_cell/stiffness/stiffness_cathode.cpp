@@ -11,8 +11,23 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double dt = constant::dt;
-    double R_p = 2e-6, d_eff = 1.6478e-11, ds_eff = 1e-14, sigma_eff = 12.1173, epsilon = 0.385, epsilon_s = 0.59, k_eff = 0.02624, kd_eff = 8.5755e-4, a = 885000;
-    const double F = 96485.3329;
+    double R_p = constant::r_p;
+    double a = 3 * constant::epsilon_s_ca / constant::r_p;
+    double eff_mat = std::pow(constant::epsilon_e_ca, 4);
+    double eff_mat_s = std::pow(constant::epsilon_s_ca, 4);
+    double d_ref = constant::de_ca * eff_mat;
+    double d_eff = constant::de_ca / d_ref * eff_mat;
+    double ds_eff = constant::ds_ca / d_ref;
+    double sigma_ref = constant::sigma_ca * eff_mat_s;
+    double sigma_eff = constant::sigma_ca / sigma_ref * eff_mat_s;
+    double epsilon = constant::epsilon_e_ca;
+    double epsilon_s = constant::epsilon_s_ca;
+    double k_ref = 1.1046 * eff_mat;
+    double k_eff = 1.1046 / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+    double c_max = constant::c_max_ca;
+    double ce_int = constant::ce_int;
+    double j_ref = constant::j_ref;
+    const double F = constant::F;
 
     for(int i = this->surface_ca_sep; i < elem_cnt; i++) {
         int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
@@ -26,12 +41,19 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
         MatrixXd e_dc = du({dof_cnt + i, dof_cnt + i + 1}, 0);
         MatrixXd e_dv = du({2 * dof_cnt + 2 * dof_cnt_eff + idx, 2 * dof_cnt + 2 * dof_cnt_eff + idx + 1}, 0);
 
-        MatrixXd e_kvq = MatrixXd::Identity(n, n) * 3 / R_p;
+        MatrixXd e_kvq = MatrixXd::Identity(n, n) * 3 / R_p / c_max * j_ref;
         MatrixXd e_kvv = MatrixXd::Identity(n, n) / dt;
         MatrixXd e_kaa = MatrixXd::Identity(n, n);
         MatrixXd e_kav = MatrixXd::Identity(n, n) * -1;
-        MatrixXd e_kaq = MatrixXd::Identity(n, n) * 0.2 * R_p / ds_eff;
+        MatrixXd e_kaq = MatrixXd::Identity(n, n) * 0.2 * R_p / ds_eff / c_max * j_ref / d_ref;
+        //MatrixXd e_kaq = MatrixXd::Zero(n, n);
         MatrixXd e_kqq = MatrixXd::Identity(n, n);
+        //MatrixXd e_kvq = MatrixXd::Zero(n, n);
+        //MatrixXd e_kvv = MatrixXd::Identity(n, n);
+        //MatrixXd e_kaa = MatrixXd::Identity(n, n);
+        //MatrixXd e_kav = MatrixXd::Zero(n, n);
+        //MatrixXd e_kaq = MatrixXd::Zero(n, n);
+        //MatrixXd e_kqq = MatrixXd::Identity(n, n);
 
         MatrixXd e_kss = MatrixXd::Zero(n, n);
         MatrixXd e_ksq = MatrixXd::Zero(n, n);
@@ -45,8 +67,11 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
         MatrixXd e_kqs = MatrixXd::Zero(n, n);
         MatrixXd e_kqa = MatrixXd::Zero(n, n);
 
-        MatrixXd e_rv = e_dv / dt + 3 * e_q / R_p;
-        MatrixXd e_ra = e_a - e_v + e_q * 0.2 * R_p / d_eff;
+        MatrixXd e_rv = e_dv / dt + 3 * e_q / R_p / c_max * j_ref;
+        MatrixXd e_ra = e_a - e_v + e_q * 0.2 * R_p / ds_eff / c_max * j_ref / d_ref;
+        //MatrixXd e_ra = MatrixXd::Zero(n, 1);
+        //MatrixXd e_rv = MatrixXd::Zero(n, 1);
+        //MatrixXd e_ra = MatrixXd::Zero(n, 1);
         MatrixXd e_rs = MatrixXd::Zero(n, 1);
         MatrixXd e_rc = MatrixXd::Zero(n, 1);
         MatrixXd e_rq = MatrixXd::Zero(n, 1);
@@ -64,35 +89,44 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
             double lower = t_mat.sum();
 
             // s part
+            double eff_1 = a * F * constant::l_ref * constant::l_ref / sigma_ref;
             e_kss += sigma_eff * dN * dN_T * w(j) * det;
-            e_ksq += a * F * N * N_T * w(j) * det;
-            e_rs += sigma_eff * dN * dN_T * e_s * w(j) * det + a * F * N * N_T * e_q * w(j) * det;
+            e_ksq += eff_1 * N * N_T * w(j) * det * j_ref;
+            e_rs += sigma_eff * dN * dN_T * e_s * w(j) * det + eff_1 * N * N_T * e_q * w(j) * det * j_ref;
+            //e_kss = MatrixXd::Identity(2, 2);
 
             // c part
-            e_kcc += epsilon * N * N_T * w(j) * det / dt + d_eff * dN * dN_T * w(j) * det;
-            e_kcq += -(1 - 0.4) * a * N * N_T * w(j) * det;
-            e_rc += epsilon * N * N_T * e_dc * w(j) * det / dt + d_eff * dN * dN_T * e_c * w(j) * det - (1 - 0.4) * a * N * N_T * e_q * w(j) * det;
+            double eff_2 = a * constant::l_ref * constant::l_ref * (1 - 0.4) / d_ref;
+            double eff_3 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
+            e_kcc += epsilon * eff_3 * N * N_T * w(j) * det + d_eff * dN * dN_T * w(j) * det;
+            e_kcq += -eff_2 * N * N_T * w(j) * det * j_ref / ce_int;
+            e_rc += epsilon * eff_3 * N * N_T * e_dc * w(j) * det + d_eff * dN * dN_T * e_c * w(j) * det - eff_2 * N * N_T * e_q * w(j) * det * j_ref / ce_int;
+            //e_kcc = MatrixXd::Identity(2, 2);
 
             // p part
+            double eff_4 = a * F * constant::l_ref * constant::l_ref / k_ref;
             e_kpp += k_eff * dN * dN_T * w(j) * det;
             e_kpc += -kd_eff / lower * dN * dN_T * w(j) * det + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
-            e_kpq += -a * F * N * N_T * w(j) * det;
-            e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det - a * F * N * N_T * e_q * w(j) * det;
+            e_kpq += -eff_4 * N * N_T * w(j) * det * j_ref;
+            e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det - eff_4 * N * N_T * e_q * w(j) * det * j_ref;
+            //e_kpp = MatrixXd::Identity(2, 2);
 
             // q part
             double j0_v = j0(e_c(j), e_a(j), 2);
             double d_j0_a_v = d_j0_a(e_c(j), e_a(j), 2);
             double d_j0_e_v = d_j0_e(e_c(j), e_a(j), 2);
-            double uoc_v = uoc(e_a(j) / 51554.0, 2);
-            double d_uoc_v = d_uoc(e_a(j) / 51554.0, 2) / 51554.0;
+            double uoc_v = uoc(e_a(j), 2);
+            double d_uoc_v = d_uoc(e_a(j), 2);
             double bv_v = bv(e_s(j) - e_p(j) - uoc_v);
             double d_bv_v = d_bv(e_s(j) - e_p(j) - uoc_v);
+            double ce_root = std::sqrt(ce_int);
 
-            e_kqp(j, j) += -j0_v * d_bv_v * (-1);
-            e_kqc(j, j) += -d_j0_e_v * bv_v;
-            e_kqs(j, j) += -j0_v * d_bv_v;
-            e_kqa(j, j) += -d_j0_a_v * bv_v - j0_v * d_bv_v * (-1) * d_uoc_v;
-            e_rq(j) += e_q(j) - j0_v * bv_v;
+            e_kqp(j, j) += -j0_v * d_bv_v * (-1) * c_max * ce_root / j_ref;
+            e_kqc(j, j) += -d_j0_e_v * bv_v * c_max * ce_root / j_ref;
+            e_kqs(j, j) += -j0_v * d_bv_v * c_max * ce_root / j_ref;
+            e_kqa(j, j) += -d_j0_a_v * bv_v * c_max * ce_root / j_ref - j0_v * d_bv_v * (-1) * d_uoc_v * c_max * ce_root / j_ref;
+            e_rq(j) += e_q(j) - j0_v * bv_v * c_max * ce_root / j_ref;
+            //e_rq(j) += e_q(j);
         }
 
         for(int j = 0; j < n; j++) {
@@ -120,13 +154,13 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
                 k(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff, idx + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kav(j, l);
                 k(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff, idx + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kaa(j, l);
 
-                res(i + j) += e_rp(j);
-                res(i + j + dof_cnt) += e_rc(j);
-                res(idx + j + 2 * dof_cnt) += e_rs(j);
-                res(idx + j + 2 * dof_cnt + dof_cnt_eff) += e_rq(j);
-                res(idx + j + 2 * dof_cnt + 2 * dof_cnt_eff) += e_rv(j);
-                res(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff) += e_ra(j);
             }
+            res(i + j) += e_rp(j);
+            res(i + j + dof_cnt) += e_rc(j);
+            res(idx + j + 2 * dof_cnt) += e_rs(j);
+            res(idx + j + 2 * dof_cnt + dof_cnt_eff) += e_rq(j);
+            res(idx + j + 2 * dof_cnt + 2 * dof_cnt_eff) += e_rv(j);
+            res(idx + j + 2 * dof_cnt + 3 * dof_cnt_eff) += e_ra(j);
         }
 
     }
