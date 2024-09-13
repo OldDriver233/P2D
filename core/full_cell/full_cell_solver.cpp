@@ -10,12 +10,12 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixX
     long point_size = this->point_coord.size();
     long eff_size = point_size - (ca - an - 1);
 
-    k.row(0) = MatrixXd::Zero(1, 2 * point_size + 4 * eff_size);
-    k(0, 0) = 1;
-    res(0, 0) = -(0 - u(0, 0));
+    k.row(2 * point_size) = MatrixXd::Zero(1, 2 * point_size + 4 * eff_size);
+    k(2 * point_size, 2 * point_size) = 1;
+    res(2 * point_size, 0) = -(0 - u(0, 0));
 
     double sigma_ref = constant::sigma_ca;
-    res(2 * point_size + eff_size - 1, 0) -= 30 * constant::l_ref / sigma_ref;
+    res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref;
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
@@ -44,7 +44,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
         //std::cout<<delta<<"-"<<std::endl;
         std::cout<<"Iter "<<iter_time<<": "<<norm<<","<<res_norm<<std::endl;
         //std::cout<<k<<"\n"<<res<<"\n-="<<std::endl;
-        std::cout<<"Cond: "<<k.norm() * k.inverse().norm()<<std::endl;
+        //std::cout<<"Cond: "<<k.norm() * k.inverse().norm()<<std::endl;
         //std::cout<<k * delta + res<<"\n-"<<std::endl;
 
         iter_time++;

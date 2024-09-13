@@ -1,4 +1,5 @@
 #include "constant.h"
+#include "../functions/functions.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 
@@ -37,6 +38,7 @@ double constant::c_max_ca;
 double constant::c_int_an;
 double constant::c_int_ca;
 double constant::ce_int;
+double constant::k_ref;
 
 
 
@@ -70,5 +72,7 @@ void constant::read() {
     constant::c_int_an = data["c_int_an"];
     constant::c_int_ca = data["c_int_ca"];
     constant::ce_int = data["ce_int"];
+
+    constant::k_ref = kappa(ce_int);
 
 }

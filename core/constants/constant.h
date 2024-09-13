@@ -35,6 +35,7 @@ public:
     static double c_int_an;
     static double c_int_ca;
     static double ce_int;
+    static double k_ref;
 
     static void read();
 };

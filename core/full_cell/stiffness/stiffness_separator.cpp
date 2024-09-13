@@ -1,4 +1,5 @@
 #include "stiffness_separator.h"
+#include "../../functions/functions.h"
 #include "../../constants/constant.h"
 #include <cmath>
 #include <iostream>
@@ -10,10 +11,8 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double dt = constant::dt;
-    double eff_mat = std::pow(constant::epsilon_e_sep, 4);
-    double k_ref = 1.1046 * eff_mat;
-    double k_eff = 1.1046 * eff_mat / k_ref, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
-    double d_ref = constant::de_sep * eff_mat;
+    double eff_mat = std::pow(constant::epsilon_e_sep, 1.5);
+    double d_ref = constant::de_sep;
     double d_eff = constant::de_sep / d_ref * eff_mat, epsilon = constant::epsilon_e_sep;
     double ce_int = constant::ce_int;
 
@@ -38,11 +37,20 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
             MatrixXd t_mat = N_T * e_c;
             // t_mat should be 1x1
             double lower = t_mat.sum();
+            double ce_int = constant::ce_int;
+
+            double k_ref = constant::k_ref;
+            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double d_k_eff = d_kappa(lower * ce_int) * ce_int / k_ref * eff_mat;
+            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
             
             // phi part
             e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det;
             e_kpp += k_eff * dN * dN_T * w(j) * det;
-            e_kpc += -kd_eff / lower * dN * dN_T * w(j) * det + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
+            e_kpc += d_k_eff * dN * dN_T * e_p * N_T * w(j) * det 
+                     - kd_eff / lower * dN * dN_T * w(j) * det
+                     - d_kd_eff / lower * dN * dN_T * e_c * N_T * w(j) * det
+                     + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
             //e_kpp = MatrixXd::Identity(n, n);
 
             // c part

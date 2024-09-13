@@ -53,16 +53,15 @@ add_executable(fem main.cpp
         functions/bv.cpp
         functions/j0.cpp
         functions/uoc.cpp
+        functions/kappa.cpp
+        io/redis_connector.h
+        io/redis_connector.cpp
 )
 
 find_path(HIREDIS_HEADER hiredis)
 target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
-find_path(REDIS_PLUS_PLUS_HEADER sw)
-target_include_directories(fem PUBLIC ${REDIS_PLUS_PLUS_HEADER})
-
 find_library(HIREDIS_LIB hiredis)
-find_library(REDIS_PLUS_PLUS_LIB redis++)
 
 target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so" ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 

@@ -14,17 +14,15 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
     double dt = constant::dt;
     double R_p = constant::r_p;
     double a = 3 * constant::epsilon_s_an / constant::r_p;
-    double eff_mat = std::pow(constant::epsilon_e_an, 4);
-    double eff_mat_s = std::pow(constant::epsilon_s_an, 4);
-    double d_ref = constant::de_an * eff_mat;
+    double eff_mat = std::pow(constant::epsilon_e_an, 1.5);
+    double eff_mat_s = std::pow(constant::epsilon_s_an, 1.5);
+    double d_ref = constant::de_an;
     double d_eff = constant::de_an / d_ref * eff_mat;
     double ds_eff = constant::ds_an / d_ref;
     double sigma_ref = constant::sigma_an * eff_mat_s;
     double sigma_eff = constant::sigma_an / sigma_ref * eff_mat_s;
     double epsilon = constant::epsilon_e_an;
     double epsilon_s = constant::epsilon_s_an;
-    double k_ref = 1.1046 * eff_mat;
-    double k_eff = 1.1046 / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
     double c_max = constant::c_max_an;
     double ce_int = constant::ce_int;
     double j_ref = constant::j_ref;
@@ -87,6 +85,12 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
             MatrixXd t_mat = N_T * e_c;
             // t_mat should be 1x1
             double lower = t_mat.sum();
+            double ce_int = constant::ce_int;
+
+            double k_ref = constant::k_ref;
+            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double d_k_eff = d_kappa(lower * ce_int) * ce_int / k_ref * eff_mat;
+            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
 
             // s part
             double eff_1 = a * F * constant::l_ref * constant::l_ref / sigma_ref;
@@ -106,7 +110,10 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
             // p part
             double eff_4 = a * F * constant::l_ref * constant::l_ref / k_ref;
             e_kpp += k_eff * dN * dN_T * w(j) * det;
-            e_kpc += -kd_eff / lower * dN * dN_T * w(j) * det + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
+            e_kpc += d_k_eff * dN * dN_T * e_p * N_T * w(j) * det 
+                     - kd_eff / lower * dN * dN_T * w(j) * det
+                     - d_kd_eff / lower * dN * dN_T * e_c * N_T * w(j) * det
+                     + kd_eff / (lower * lower) * dN * dN_T * e_c * N_T * w(j) * det;
             e_kpq += -eff_4 * N * N_T * w(j) * det * j_ref;
             e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det - eff_4 * N * N_T * e_q * w(j) * det * j_ref;
             //e_kpp = MatrixXd::Identity(2, 2);

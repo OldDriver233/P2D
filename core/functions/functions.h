@@ -10,5 +10,7 @@ double d_j0_e(double c_e, double c_a, int type);
 double d_j0_a(double c_e, double c_a, int type);
 double bv(double eta);
 double d_bv(double eta);
+double kappa(double c);
+double d_kappa(double c);
 
 #endif //FEM_FUNCTIONS_H
