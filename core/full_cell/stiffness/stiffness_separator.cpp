@@ -11,7 +11,7 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
     MatrixXd xs = get_integration_point(dim, n);
     MatrixXd w = get_integration_weight(dim, n);
     double dt = constant::dt;
-    double eff_mat = std::pow(constant::epsilon_e_sep, 1.5);
+    double eff_mat = std::pow(constant::epsilon_e_sep, constant::bruggeman);
     double d_ref = constant::de_sep;
     double d_eff = constant::de_sep / d_ref * eff_mat, epsilon = constant::epsilon_e_sep;
     double ce_int = constant::ce_int;
@@ -40,9 +40,9 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
             double ce_int = constant::ce_int;
 
             double k_ref = constant::k_ref;
-            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
             double d_k_eff = d_kappa(lower * ce_int) * ce_int / k_ref * eff_mat;
-            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
             
             // phi part
             e_rp += k_eff * dN * dN_T * e_p * w(j) * det - kd_eff / lower * dN * dN_T * e_c * w(j) * det;

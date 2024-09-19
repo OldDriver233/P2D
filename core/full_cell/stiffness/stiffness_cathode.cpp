@@ -13,8 +13,8 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
     double dt = constant::dt;
     double R_p = constant::r_p;
     double a = 3 * constant::epsilon_s_ca / constant::r_p;
-    double eff_mat = std::pow(constant::epsilon_e_ca, 1.5);
-    double eff_mat_s = std::pow(constant::epsilon_s_ca, 1.5);
+    double eff_mat = std::pow(constant::epsilon_e_ca, constant::bruggeman);
+    double eff_mat_s = std::pow(constant::epsilon_s_ca, constant::bruggeman);
     double d_ref = constant::de_ca;
     double d_eff = constant::de_ca / d_ref * eff_mat;
     double ds_eff = constant::ds_ca / d_ref;
@@ -87,9 +87,9 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
             double lower = t_mat.sum();
 
             double k_ref = constant::k_ref;
-            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
             double d_k_eff = d_kappa(lower * ce_int) * ce_int / k_ref * eff_mat;
-            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - 0.4);
+            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
 
             // s part
             double eff_1 = a * F * constant::l_ref * constant::l_ref / sigma_ref;
@@ -99,7 +99,7 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
             //e_kss = MatrixXd::Identity(2, 2);
 
             // c part
-            double eff_2 = a * constant::l_ref * constant::l_ref * (1 - 0.4) / d_ref;
+            double eff_2 = a * constant::l_ref * constant::l_ref * (1 - constant::trans) / d_ref;
             double eff_3 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
             e_kcc += epsilon * eff_3 * N * N_T * w(j) * det + d_eff * dN * dN_T * w(j) * det;
             e_kcq += -eff_2 * N * N_T * w(j) * det * j_ref / ce_int;

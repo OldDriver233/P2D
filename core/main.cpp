@@ -95,19 +95,31 @@ void calc_cell() {
     }
 
     std::vector<double> delta_u;
+    std::vector<double> c_star;
+    std::vector<double> voltage;
     for(int i = 0; i < constant::step; i++) {
         s.calc(u);
-        std::cout<<"Step: "<<i<<std::endl;
+        //std::cout<<"Step: "<<i<<std::endl;
         delta_u.push_back(u(pt_size - 1) - u(0));
+        c_star.push_back(u(2 * pt_size + 4 * eff_size - 1));
+        voltage.push_back(u(2 * pt_size + eff_size - 1) - u(2 * pt_size));
     }
     std::cout<<u<<std::endl;
 
     std::cout<<"Writing to redis"<<std::endl;
     auto redis = redis_connector();
+    redis.del("voltage");
     redis.del("delta_u");
     redis.del("u");
+    redis.del("c_star");
+    for(int i = 0; i < voltage.size(); i++) {
+        redis.rpush("voltage", std::to_string(voltage[i]));
+    }
     for(int i = 0; i < delta_u.size(); i++) {
         redis.rpush("delta_u", std::to_string(delta_u[i]));
+    }
+    for(int i = 0; i < c_star.size(); i++) {
+        redis.rpush("c_star", std::to_string(c_star[i] * constant::c_max_ca / 10000));
     }
     for(int i = 0; i < pt_size; i++) {
         redis.rpush("u", std::to_string(u(i + pt_size) - 1));

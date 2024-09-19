@@ -12,14 +12,22 @@ const app = new Elysia()
     set.headers["access-control-allow-origin"] = "*"
 
     console.log(headers)
-    const lastUpdate = await redis.get("us:last_update_at")
+    const lastUpdate = await redis.get("last_update_at")
     if (lastUpdate === null) return error(404, "Not Found")
     else if(parseFloat(lastUpdate) <= headers.last_update_at) return error(304, "Not Modified")
 
-    const result = await redis.lRange("us", 0, -1)
+    const u = await redis.lRange("u", 0, -1)
+    const voltage = await redis.lRange("voltage", 0, -1)
+    const delta_u = await redis.lRange("delta_u", 0, -1)
+    const c_star = await redis.lRange("c_star", 0, -1)
     return {
       lastUpdateAt: parseFloat(lastUpdate),
-      result: result,
+      result: {
+        u,
+        voltage,
+        delta_u,
+        c_star,
+      }
     }
   }, {
     headers: t.Object({

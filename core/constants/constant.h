@@ -36,6 +36,8 @@ public:
     static double c_int_ca;
     static double ce_int;
     static double k_ref;
+    static double bruggeman;
+    static double trans;
 
     static void read();
 };
