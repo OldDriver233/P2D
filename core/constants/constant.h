@@ -38,6 +38,8 @@ public:
     static double k_ref;
     static double bruggeman;
     static double trans;
+    static double k_an;
+    static double k_ca;
 
     static void read();
 };

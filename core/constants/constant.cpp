@@ -41,6 +41,8 @@ double constant::ce_int;
 double constant::k_ref;
 double constant::bruggeman;
 double constant::trans;
+double constant::k_an;
+double constant::k_ca;
 
 
 void constant::read() {
@@ -73,6 +75,8 @@ void constant::read() {
     constant::c_int_an = data["c_int_an"];
     constant::c_int_ca = data["c_int_ca"];
     constant::ce_int = data["ce_int"];
+    constant::k_an = data["k_an"];
+    constant::k_ca = data["k_ca"];
     constant::bruggeman = data["bruggeman"];
     constant::trans = data["trans"];
 

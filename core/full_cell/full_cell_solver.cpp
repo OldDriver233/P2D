@@ -14,7 +14,8 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixX
     k(2 * point_size, 2 * point_size) = 1;
     res(2 * point_size, 0) = -(0 - u(0, 0));
 
-    double sigma_ref = constant::sigma_ca;
+    double eff_mat_s = std::pow(constant::epsilon_s_ca, constant::bruggeman);
+    double sigma_ref = constant::sigma_ca * eff_mat_s;
     res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref;
 }
 
