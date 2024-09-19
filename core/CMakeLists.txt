@@ -63,6 +63,6 @@ target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
 find_library(HIREDIS_LIB hiredis)
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so" ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
+target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX LAPACK::LAPACK BLAS::BLAS "liblapacke.so" ${HIREDIS_LIB})
 
 install(TARGETS fem DESTINATION .)

@@ -13,7 +13,7 @@ public:
     stiffness_separator(VectorXd points, int an, int ca): stiffness_base(points, an, ca) {
     }
     ~stiffness_separator() {}
-    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<VectorXd>) override;
+    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, std::vector<Eigen::Triplet<double>>&, Eigen::Ref<VectorXd>) override;
 };
 
 #endif //FEM_STIFFNESS_SEPARATOR_H

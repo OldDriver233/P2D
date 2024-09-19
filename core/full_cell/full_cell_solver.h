@@ -31,7 +31,7 @@ public:
     }
 
     void calc(Eigen::Ref<MatrixXd>);
-    void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, Eigen::Ref<VectorXd>);
+    void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double>&, Eigen::Ref<VectorXd>);
 
 };
 

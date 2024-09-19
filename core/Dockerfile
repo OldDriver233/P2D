@@ -12,3 +12,4 @@ RUN apt-get install -y gmsh libgmsh-dev
 
 RUN apt-get install -y nlohmann-json3-dev
 
+RUN apt-get install -y libhiredis-dev

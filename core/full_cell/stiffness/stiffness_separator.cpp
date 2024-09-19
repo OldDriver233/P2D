@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, Eigen::Ref<MatrixXd>k, Eigen::Ref<VectorXd> res) {
+void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res) {
     int dim = 1, n = 2;
     long dof_cnt = this->points.size();
     long elem_cnt = this->points.size() - 1;
@@ -62,10 +62,14 @@ void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> 
 
         for(int j = 0; j < n; j++) {
             for(int l = 0; l < n; l++) {
-                k(i + j, i + l) += e_kpp(j, l);
-                k(i + j, i + l + dof_cnt) += e_kpc(j, l);
-                k(i + j + dof_cnt, i + l) += e_kcp(j, l);
-                k(i + j + dof_cnt, i + l + dof_cnt) += e_kcc(j, l);
+                //k(i + j, i + l) += e_kpp(j, l);
+                //k(i + j, i + l + dof_cnt) += e_kpc(j, l);
+                //k(i + j + dof_cnt, i + l) += e_kcp(j, l);
+                //k(i + j + dof_cnt, i + l + dof_cnt) += e_kcc(j, l);
+                t.push_back(Eigen::Triplet<double>(i + j, i + l, e_kpp(j, l)));
+                t.push_back(Eigen::Triplet<double>(i + j, i + l + dof_cnt, e_kpc(j, l)));
+                t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l, e_kcp(j, l)));
+                t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l)));
             }
             res(i + j) += e_rp(j);
             res(i + j + dof_cnt) += e_rc(j);

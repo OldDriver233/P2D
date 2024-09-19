@@ -1,17 +1,23 @@
 #include "full_cell_solver.h"
+#include "Eigen/src/Core/util/Constants.h"
+#include "Eigen/src/SparseCore/SparseMatrix.h"
+#include "Eigen/src/SparseLU/SparseLU.h"
+#include <eigen3/Eigen/Sparse>
 #include <iostream>
-#include <eigen3/Eigen/IterativeLinearSolvers>
+#include <eigen3/Eigen/SparseLU>
 
 inline double clamp(double x, double lower, double upper) {
     return x < lower ? lower : (x > upper ? upper : x);
 }
 
-void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> k, Eigen::Ref<VectorXd> res) {
+void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res) {
     long point_size = this->point_coord.size();
     long eff_size = point_size - (ca - an - 1);
 
-    k.row(2 * point_size) = MatrixXd::Zero(1, 2 * point_size + 4 * eff_size);
-    k(2 * point_size, 2 * point_size) = 1;
+    for(int i = 0; i < 2 * point_size + 4 * eff_size; i++) {
+        k.coeffRef(2 * point_size, i) = 0;
+    }
+    k.coeffRef(2 * point_size, 2 * point_size) = 1;
     res(2 * point_size, 0) = -(0 - u(0, 0));
 
     double eff_mat_s = std::pow(constant::epsilon_s_ca, constant::bruggeman);
@@ -29,15 +35,19 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
     MatrixXd du = MatrixXd::Zero(2 * point_size + 4 * eff_size, 1);
 
     while(iter_time < iter && res_norm > tolerance) {
-        MatrixXd k = MatrixXd::Zero(2 * point_size + 4 * eff_size, 2 * point_size + 4 * eff_size);
+        Eigen::SparseMatrix<double> k(2 * point_size + 4 * eff_size, 2 * point_size + 4 * eff_size);
         VectorXd res = VectorXd::Zero(2 * point_size + 4 * eff_size);
+        std::vector<Eigen::Triplet<double>> coeff;
 
-        this->anode.generate(u, du, k, res);
-        this->sep.generate(u, du, k, res);
-        this->cathode.generate(u, du, k, res);
+        this->anode.generate(u, du, coeff, res);
+        this->sep.generate(u, du, coeff, res);
+        this->cathode.generate(u, du, coeff, res);
+        k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res);
 
-        MatrixXd delta = - k.lu().solve(res);
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        solver.compute(k);
+        MatrixXd delta = - solver.solve(res);
         du += delta;
         u += delta;
         double norm = delta.norm();
