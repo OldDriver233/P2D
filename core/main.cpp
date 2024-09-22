@@ -65,8 +65,8 @@ void calc_separator() {
 
 
 void calc_cell() {
-    int pt_size = 46;
-    int an = 20, ca = 25;
+    int pt_size = 225;
+    int an = 100, ca = 125;
     int eff_size = pt_size - (ca - an - 1);
     constant::read();
     VectorXd coord = VectorXd::LinSpaced(pt_size, 0, 225);

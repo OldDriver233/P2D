@@ -4,6 +4,16 @@
 
 Follow the steps in `Dockerfile` to get all required packages.
 
+## Compilation
+
+For users using `icx`, use the following command:
+
+```cmake .. -DDEBUG=OFF -DUSE_MKL=ON -DCMAKE_CXX_COMPILER=icx-cc -DCMAKE_C_COMPILER=icx -DMKL_INTERFACE_FULL=intel_lp64```
+
+For users using `gcc`:
+
+```cmake .. -DDEBUG=OFF -DUSE_MKL=ON -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DMKL_INTERFACE_FULL=intel_lp64```
+
 ## Usage
 
 Currently you need to create a `config.json` file. One sample of the file:

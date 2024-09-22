@@ -1,10 +1,9 @@
 #include "full_cell_solver.h"
-#include "Eigen/src/Core/util/Constants.h"
-#include "Eigen/src/SparseCore/SparseMatrix.h"
-#include "Eigen/src/SparseLU/SparseLU.h"
 #include <eigen3/Eigen/Sparse>
 #include <iostream>
+#include <cstdio>
 #include <eigen3/Eigen/SparseLU>
+#include <eigen3/Eigen/PardisoSupport>
 
 inline double clamp(double x, double lower, double upper) {
     return x < lower ? lower : (x > upper ? upper : x);
@@ -45,7 +44,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
         k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res);
 
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        Eigen::PardisoLU<Eigen::SparseMatrix<double>> solver;
         solver.compute(k);
         MatrixXd delta = - solver.solve(res);
         du += delta;
@@ -53,7 +52,8 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 4 * eff_size);
         //std::cout<<delta<<"-"<<std::endl;
-        std::cout<<"Iter "<<iter_time<<": "<<norm<<","<<res_norm<<std::endl;
+        //std::cout<<"Iter "<<iter_time<<": "<<norm<<","<<res_norm<<std::endl;
+        printf("Iter %d: %lf, %lf\n", iter_time, norm, res_norm);
         //std::cout<<k<<"\n"<<res<<"\n-="<<std::endl;
         //std::cout<<"Cond: "<<k.norm() * k.inverse().norm()<<std::endl;
         //std::cout<<k * delta + res<<"\n-"<<std::endl;
