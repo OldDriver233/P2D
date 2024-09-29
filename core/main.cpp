@@ -6,6 +6,7 @@
 #include "mesh/mesh_reader.h"
 #include "particle/particle_solver.h"
 #include "full_cell/full_cell_solver.h"
+#include "io/coord_reader.h"
 #include "io/redis_connector.h"
 #include <eigen3/Eigen/Dense>
 #include <vector>
@@ -29,47 +30,11 @@ std::time_t get_timestamp() {
     return timestamp;
 }
 
-/*
-void calc_particle()
-{
-    //if(true) {
-    //    check_mesh();
-    //    return 0;
-    //}
-    std::vector<double> us;
-    constant::read();
-    VectorXd coord = VectorXd::LinSpaced(101, 0, 1);
-    auto s = particle_solver(VectorXd::LinSpaced(101, 0, 1));
-    MatrixXd u = MatrixXd::Ones(101, 1) * constant::initial_c / constant::max_c;
-    for(int i = 0; i < constant::step; i++) {
-        us.push_back(u(100));
-        s.calc(u);
-    }
-    us.push_back(u(100));
-
-    std::cout<<"Calculation complete. Writing to redis..."<<std::endl;
-    
-    auto redis = Redis("tcp://127.0.0.1:6379");
-    auto pipe = redis.pipeline();
-    pipe.del("us");
-    for(int i = 0; i < us.size(); i++) {
-        pipe.rpush("us", std::to_string(us[i]));
-    }
-    pipe.set("us:last_update_at", std::to_string(get_timestamp()));
-    pipe.exec();
-}
-*/
-void calc_separator() {
-    
-}
-
-
 void calc_cell() {
-    int pt_size = 225;
-    int an = 100, ca = 125;
+    auto [coord, an, ca] = coord_reader("coord.json");
+    int pt_size = coord.size();
     int eff_size = pt_size - (ca - an - 1);
     constant::read();
-    VectorXd coord = VectorXd::LinSpaced(pt_size, 0, 225);
     auto s = full_cell_solver(an, ca, coord);
     MatrixXd u = MatrixXd::Zero(2 * pt_size + 4 * eff_size, 1);
     for(int i = pt_size; i < 2 * pt_size; i++) {
@@ -97,7 +62,7 @@ void calc_cell() {
     std::vector<double> delta_u;
     std::vector<double> c_star;
     std::vector<double> voltage;
-    for(int i = 0; i < constant::step; i++) {
+    for(int i = 0; i <= constant::step; i++) {
         s.calc(u);
         //std::cout<<"Step: "<<i<<std::endl;
         delta_u.push_back(u(pt_size - 1) - u(0));
@@ -122,19 +87,9 @@ void calc_cell() {
         redis.rpush("c_star", std::to_string(c_star[i] * constant::c_max_ca / 10000));
     }
     for(int i = 0; i < pt_size; i++) {
-        redis.rpush("u", std::to_string(u(i + pt_size) - 1));
+        redis.rpush("u", std::to_string(u(i + pt_size) * constant::ce_int));
     }
     redis.set("last_update_at", std::to_string(get_timestamp()));
-    /*
-    auto redis = Redis("tcp://127.0.0.1:6379");
-    auto pipe = redis.pipeline();
-    pipe.del("us");
-    for(int i = 0; i < u.size() / 2; i++) {
-        pipe.rpush("us", std::to_string(u(i)));
-    }
-    pipe.set("us:last_update_at", std::to_string(get_timestamp()));
-    pipe.exec();
-    */
 }
 
 
@@ -159,14 +114,3 @@ int main() {
     calc_cell();
     //test();
 }
-
-/*
-namespace py = pybind11;
-
-PYBIND11_MODULE(fem, m) {
-    py::class_<particle_solver>(m, "ParticleSolver")
-            .def(py::init<const VectorXd&>())
-            .def("calc", &particle_solver::calc);
-
-}
- */

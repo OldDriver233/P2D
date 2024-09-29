@@ -2,6 +2,10 @@
 #define FULL_CELL_SOLVER_H
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/SparseLU>
+//#include <eigen3/Eigen/PardisoSupport>
+//#include <eigen3/Eigen/UmfPackSupport>
+//#include <eigen3/Eigen/src/UmfPackSupport/UmfPackSupport.h>
 #include "../shaping/primitive_type.h"
 #include "stiffness/stiffness_separator.h"
 #include "stiffness/stiffness_anode.h"
@@ -23,6 +27,7 @@ public:
     stiffness_anode anode;
     stiffness_cathode cathode;
     int step = 0;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 
     full_cell_solver(int an, int ca, const VectorXd& coord): point_coord(coord), an(an), ca(ca) {
         sep = stiffness_separator(coord, an, ca);
@@ -31,7 +36,7 @@ public:
     }
 
     void calc(Eigen::Ref<MatrixXd>);
-    void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double>&, Eigen::Ref<VectorXd>);
+    void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double>&, Eigen::Ref<VectorXd>, bool);
 
 };
 

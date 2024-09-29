@@ -46,6 +46,8 @@ type ResultType = {
   voltage: number[],
   c_star: number[],
   u: number[],
+  u_ref: number[],
+  voltage_ref: number[],
 }
 
 var result: ResultType = reactive({
@@ -53,12 +55,22 @@ var result: ResultType = reactive({
   voltage: [],
   c_star: [],
   u: [],
+  u_ref: [],
+  voltage_ref: [],
 })
 
 const last_update: Ref<number> = ref(0)
 const selection: Ref<"u" | "c_star" | "voltage" | "delta_u"> = ref('u')
 const x_axis = computed(() => Array.from({length: result[selection.value].length}, (_, i) => i))
 const display_data = computed(() => result[selection.value])
+const ref_data = computed(() => {
+  switch(selection.value) {
+    case "u": return result.u_ref
+    case "c_star": return []
+    case "voltage": return result.voltage_ref
+    case "delta_u": return []
+  }
+})
 
 
 function update_data() {
@@ -67,9 +79,11 @@ function update_data() {
       last_update.value = resp.data.lastUpdateAt
       let fetched_result: ResultType = resp.data.result
       result.delta_u = fetched_result.delta_u
-      result.voltage = fetched_result.voltage
+      result.voltage = fetched_result.voltage.map((x) => x - 4)
       result.c_star = fetched_result.c_star
-      result.u = fetched_result.u
+      result.u = fetched_result.u.map((x) => x / 1000 - 1)
+      result.u_ref = fetched_result.u_ref.map((x) => x / 1000 - 1)
+      result.voltage_ref = fetched_result.voltage_ref.map((x) => x - 4)
       //result = resp.data.result
       ElMessage({
         message: "Data updated",
@@ -108,6 +122,12 @@ const option: Ref<ECBasicOption> = ref({
   series: [
     {
       data: display_data,
+      type: 'line',
+      smooth: true,
+      showSymbol: false
+    },
+    {
+      data: ref_data,
       type: 'line',
       smooth: true,
       showSymbol: false

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.29)
-project(fem CXX)
+project(fem)
 
 
 
@@ -9,11 +9,12 @@ project(fem CXX)
 option(DEBUG "Enable debug" OFF)
 option(USE_BLAS_LAPACK "Enable blas and lapack" OFF)
 option(USE_MKL "Enable MKL Library" OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 if(DEBUG)
         set(CMAKE_CXX_FLAGS "-O0 -pg -Wall -Wextra -g")
 else()
-        set(CMAKE_CXX_FLAGS "-O3 -march=native")
+        set(CMAKE_CXX_FLAGS "-Ofast -march=native")
 endif()
 
 if (USE_BLAS_LAPACK)
@@ -30,6 +31,7 @@ find_package(Eigen3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(/usr/include/suitesparse)
 
 add_executable(fem main.cpp
         integration/integration_shapes.h
@@ -64,7 +66,9 @@ add_executable(fem main.cpp
 
 if (USE_MKL)
         add_definitions(-DEIGEN_USE_MKL_ALL)
+        find_package(OpenMP REQUIRED)
         find_package(MKL CONFIG REQUIRED)
+        find_package(SuiteSparse_config REQUIRED)
         target_compile_options(fem PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
         target_include_directories(fem PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_INCLUDE_DIRECTORIES>)
         target_link_libraries(fem PUBLIC $<LINK_ONLY:MKL::MKL>)
@@ -76,6 +80,6 @@ target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
 find_library(HIREDIS_LIB hiredis)
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so")
+target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so")
 
 install(TARGETS fem DESTINATION .)

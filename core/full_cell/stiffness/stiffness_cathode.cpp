@@ -3,7 +3,7 @@
 #include "../../functions/functions.h"
 #include <iostream>
 
-void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res) {
+void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res, bool is_first_step) {
     int dim = 1, n = 2;
     int dof_cnt = this->points.size();
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
@@ -133,6 +133,7 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
             e_kqa(j, j) += -d_j0_a_v * bv_v * c_max * ce_root / j_ref - j0_v * d_bv_v * (-1) * d_uoc_v * c_max * ce_root / j_ref;
             e_rq(j) += e_q(j) - j0_v * bv_v * c_max * ce_root / j_ref;
             //e_rq(j) += e_q(j);
+            //std::cout<<e_c(j)<<" "<<e_a(j)<<" "<<j0_v<<" "<<d_j0_a_v<<" "<<d_j0_e_v<<" "<<uoc_v<<" "<<d_uoc_v<<" "<<bv_v<<" "<<d_bv_v<<" "<<std::endl;
         }
 
         for(int j = 0; j < n; j++) {
@@ -168,8 +169,10 @@ void stiffness_cathode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du
                 t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l)));
                 t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, idx + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l)));
 
-                t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt, e_kss(j, l)));
-                t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l)));
+                if((!is_first_step) || i != elem_cnt - 1 || j != n - 1) {
+                    t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt, e_kss(j, l)));
+                    t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt, idx + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l)));
+                }
 
                 t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt + dof_cnt_eff, i + l, e_kqp(j, l)));
                 t.push_back(Eigen::Triplet<double>(idx + j + 2 * dof_cnt + dof_cnt_eff, i + l + dof_cnt, e_kqc(j, l)));

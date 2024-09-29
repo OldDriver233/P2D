@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res) {
+void stiffness_separator::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res, bool is_first_step) {
     int dim = 1, n = 2;
     long dof_cnt = this->points.size();
     long elem_cnt = this->points.size() - 1;

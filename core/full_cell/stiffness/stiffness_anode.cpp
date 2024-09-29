@@ -4,7 +4,7 @@
 #include <eigen3/Eigen/Sparse>
 #include <iostream>
 
-void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res) {
+void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, std::vector<Eigen::Triplet<double>> &t, Eigen::Ref<VectorXd> res, bool is_first_step) {
     int dim = 1, n = 2;
     int dof_cnt = this->points.size();
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
@@ -28,6 +28,7 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
     double j_ref = constant::j_ref;
     const double F = constant::F;
 
+    #pragma omp simd
     for(int i = 0; i < this->surface_an_sep; i++) {
         MatrixXd e_p = u({i, i + 1}, 0); // phi_e
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
@@ -135,7 +136,7 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
             e_rq(j) += e_q(j) - j0_v * bv_v * c_max * ce_root / j_ref;
             //e_rq(j) += e_q(j);
 
-            //std::cout<<j0_v<<" "<<d_j0_a_v<<" "<<d_j0_e_v<<" "<<uoc_v<<" "<<d_uoc_v<<" "<<bv_v<<" "<<d_bv_v<<" "<<std::endl;
+            
         }
 
         for(int j = 0; j < n; j++) {
@@ -164,15 +165,19 @@ void stiffness_anode::generate(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> du, 
                 k(i + j + 2 * dof_cnt + 3 * dof_cnt_eff, i + l + 2 * dof_cnt + 2 * dof_cnt_eff) += e_kav(j, l);
                 k(i + j + 2 * dof_cnt + 3 * dof_cnt_eff, i + l + 2 * dof_cnt + 3 * dof_cnt_eff) += e_kaa(j, l);
                 */
-                t.push_back(Eigen::Triplet<double>(i + j, i + l, e_kpp(j, l)));
-                t.push_back(Eigen::Triplet<double>(i + j, i + l + dof_cnt, e_kpc(j, l)));
-                t.push_back(Eigen::Triplet<double>(i + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_kpq(j, l)));
+                if((!is_first_step) || i != 0 || j != 0) {
+                    t.push_back(Eigen::Triplet<double>(i + j, i + l, e_kpp(j, l)));
+                    t.push_back(Eigen::Triplet<double>(i + j, i + l + dof_cnt, e_kpc(j, l)));
+                    t.push_back(Eigen::Triplet<double>(i + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_kpq(j, l)));
+                }
 
                 t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l)));
                 t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l)));
 
-                t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt, e_kss(j, l)));
-                t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l)));
+                if(i != 0 || j != 0) {
+                    t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt, e_kss(j, l)));
+                    t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l)));
+                }
 
                 t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt + dof_cnt_eff, i + l, e_kqp(j, l)));
                 t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt + dof_cnt_eff, i + l + dof_cnt, e_kqc(j, l)));

@@ -12,7 +12,7 @@ public:
     stiffness_cathode(VectorXd points, int an, int ca): stiffness_base(points, an, ca) {
     }
     ~stiffness_cathode() {}
-    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, std::vector<Eigen::Triplet<double>>&, Eigen::Ref<VectorXd>) override;
+    void generate(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, std::vector<Eigen::Triplet<double>>&, Eigen::Ref<VectorXd>, bool) override;
 };
 
 #endif //FEM_STIFFNESS_CATHODE_H

@@ -20,6 +20,8 @@ const app = new Elysia()
     const voltage = await redis.lRange("voltage", 0, -1)
     const delta_u = await redis.lRange("delta_u", 0, -1)
     const c_star = await redis.lRange("c_star", 0, -1)
+    const u_ref = await redis.lRange("u_ref", 0, -1)
+    const voltage_ref = await redis.lRange("voltage_ref", 0, -1)
     return {
       lastUpdateAt: parseFloat(lastUpdate),
       result: {
@@ -27,6 +29,8 @@ const app = new Elysia()
         voltage,
         delta_u,
         c_star,
+        u_ref,
+        voltage_ref,
       }
     }
   }, {
