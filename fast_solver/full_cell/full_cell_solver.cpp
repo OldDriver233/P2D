@@ -2,9 +2,8 @@
 #include "../functions/functions.h"
 #include <cstdlib>
 #include <eigen3/Eigen/Sparse>
-#include <iostream>
 #include <cstdio>
-#include <eigen3/Eigen/SparseLU>
+#include <iostream>
 
 inline double clamp(double x, double lower, double upper) {
     return x < lower ? lower : (x > upper ? upper : x);
@@ -18,8 +17,8 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         k.insert(2 * point_size, 2 * point_size) = 1;
         k.insert(2 * point_size + eff_size - 1, 2 * point_size + eff_size - 1) = 1;
         res(0, 0) = -(0 - u(0, 0));
-        res(2 * point_size, 0) = -(uoc(constant::c_int_an / constant::c_max_an, 1) - u(2 * point_size, 0));
-        res(2 * point_size + eff_size - 1, 0) = -(uoc(constant::c_int_ca / constant::c_max_ca, 2) - u(2 * point_size + eff_size - 1, 0));
+        res(2 * point_size, 0) = -(uoc<1>(constant::c_int_an / constant::c_max_an) - u(2 * point_size, 0));
+        res(2 * point_size + eff_size - 1, 0) = -(uoc<2>(constant::c_int_ca / constant::c_max_ca) - u(2 * point_size + eff_size - 1, 0));
     } else {
         k.insert(2 * point_size, 2 * point_size) = 1;
         res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
@@ -41,38 +40,29 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u) {
     double res_norm = 999999.0;
     double first_norm;
     MatrixXd du = MatrixXd::Zero(2 * point_size + 4 * eff_size, 1);
+    std::vector<Eigen::Triplet<double>> coeff;
 
     while(iter_time < iter && res_norm > tolerance) {
         Eigen::SparseMatrix<double> k(2 * point_size + 4 * eff_size, 2 * point_size + 4 * eff_size);
         VectorXd res = VectorXd::Zero(2 * point_size + 4 * eff_size);
-        std::vector<Eigen::Triplet<double>> coeff;
+        coeff.clear();
+        coeff.reserve(12 * point_size);
 
         this->anode.generate(u, du, coeff, res, step == 0);
         this->sep.generate(u, du, coeff, res, step == 0);
         this->cathode.generate(u, du, coeff, res, step == 0);
         k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res, step == 0);
-        //std::cout<<k<<"\n"<<res<<"\n-="<<std::endl;
 
-        solver.analyzePattern(k);
-        solver.factorize(k);
-        if(solver.info() != 0) {
-            std::cerr<<solver.info();
-        }        
         solver.compute(k);
         MatrixXd delta = - solver.solve(res);
         du += delta;
         u += delta;
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 4 * eff_size);
-        //std::cout<<delta<<"-"<<std::endl;
-        //std::cout<<"Iter "<<iter_time<<": "<<norm<<","<<res_norm<<std::endl;
         printf("Step %d Iter %d: %lf, %lf\n", step, iter_time, norm, res_norm);
-        //std::cout<<"Cond: "<<k.norm() * k.inverse().norm()<<std::endl;
-        //std::cout<<k<<"\n-"<<std::endl;
-        //if(step == 42) std::cout<<u<<"-"<<std::endl;
+        
 
-        //res_norm = 1e-16;
         iter_time++;
     }
     step++;
