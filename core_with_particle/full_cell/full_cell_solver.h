@@ -1,0 +1,50 @@
+#ifndef FULL_CELL_SOLVER_H
+#define FULL_CELL_SOLVER_H
+#include <eigen3/Eigen/Dense>
+// #include <eigen3/Eigen/PardisoSupport>
+#include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/SparseLU>
+// #include <eigen3/Eigen/UmfPackSupport>
+//  #include <eigen3/Eigen/src/UmfPackSupport/UmfPackSupport.h>
+#include "../constants/constant.h"
+#include "../shaping/primitive_type.h"
+#include "stiffness/stiffness_anode.h"
+#include "stiffness/stiffness_cathode.h"
+#include "stiffness/stiffness_separator.h"
+#include "particle/particle_solver.h"
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
+class full_cell_solver {
+public:
+    Primitive primitive = Primitive::Line2;
+    VectorXd point_coord;
+    VectorXd result;
+    const int iter = 10;
+    const double tolerance = constant::tolerance;
+    int an, ca;
+    stiffness_separator sep;
+    stiffness_anode anode;
+    stiffness_cathode cathode;
+    int step = 0;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+    particle_solver anode_particle, cathode_particle;
+
+
+    full_cell_solver(int an, int ca, const VectorXd &coord, const VectorXd &particle_coord)
+        : point_coord(coord), an(an), ca(ca), 
+        anode_particle(particle_coord, constant::ds_an, constant::c_max_an),
+        cathode_particle(particle_coord, constant::ds_ca, constant::c_max_ca)
+         {
+        sep = stiffness_separator(coord, an, ca);
+        anode = stiffness_anode(coord, an, ca, -anode_particle.j_coeff(constant::particle_segment));
+        cathode = stiffness_cathode(coord, an, ca, -cathode_particle.j_coeff(constant::particle_segment));
+    }
+
+    void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);
+    void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double> &,
+                        Eigen::Ref<VectorXd>, bool);
+};
+
+#endif // FULL_CELL_SOLVER_H
