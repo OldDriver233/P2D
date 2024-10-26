@@ -59,8 +59,21 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         double j0_v = j0<1>(u_ptr[dof_cnt + idx], c_ss);
         double d_j0_a_v = d_j0_a<1>(u_ptr[dof_cnt + idx], c_ss);
         double d_j0_e_v = d_j0_e<1>(u_ptr[dof_cnt + idx], c_ss);
-        double uoc_v = uoc<1>(c_ss);
-        double d_uoc_v = d_uoc<1>(c_ss) / c_max;
+        double uoc_v;
+        double d_uoc_v;
+        if(!settings::use_customize_uoc) {
+            uoc_v = uoc<1>(c_ss);
+            d_uoc_v = d_uoc<1>(c_ss);
+        } else {
+            VectorXreal c_ss_r(1);
+            c_ss_r << c_ss;
+            real u;
+            VectorXreal d_uoc_r;
+            auto f = [&](VectorXreal x) {return this->pfm->uoc_anode.initial_node->eval(x);};
+            d_uoc_r = gradient(f, wrt(c_ss_r), at(c_ss_r), u);
+            uoc_v = u.val();
+            d_uoc_v = d_uoc_r(0).val();
+        }
         double bv_v = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
         double d_bv_v = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
 

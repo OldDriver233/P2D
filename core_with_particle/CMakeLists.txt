@@ -25,10 +25,11 @@ if (USE_BLAS_LAPACK)
 endif()
 
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(Eigen3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(autodiff REQUIRED)
 
 INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(/usr/include/suitesparse)
@@ -50,9 +51,11 @@ add_executable(fem main.cpp
         full_cell/stiffness/stiffness_cathode.cpp
         full_cell/particle/particle_solver.h
         full_cell/particle/particle_solver.cpp
+        functions/parser/parser.cpp
         functions/functions.h
         io/redis_connector.h
         io/redis_connector.cpp
+        io/settings/settings.cpp
 )
 
 if (USE_MKL)
@@ -71,6 +74,6 @@ target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
 find_library(HIREDIS_LIB hiredis)
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so")
+target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so")
 
 install(TARGETS fem DESTINATION .)

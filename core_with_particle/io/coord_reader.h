@@ -1,6 +1,7 @@
 #ifndef FEM_COORD_READER_H
 #define FEM_COORD_READER_H
 
+#include "settings/settings.h"
 #include <nlohmann/json.hpp>
 #include <eigen3/Eigen/Dense>
 #include <string>
@@ -10,8 +11,8 @@
 using Eigen::VectorXd;
 using json = nlohmann::json;
 
-inline std::tuple<VectorXd, int, int> coord_reader(const std::string& filename) {
-    std::ifstream f(filename);
+inline std::tuple<VectorXd, int, int> coord_reader() {
+    std::ifstream f(settings::coord_path);
     json data = json::parse(f);
     auto coord_vec = data["coords"].template get<std::vector<double>>();
     VectorXd coord(coord_vec.size());

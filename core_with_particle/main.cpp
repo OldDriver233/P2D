@@ -5,6 +5,7 @@
 #include "full_cell/particle/particle_solver.h"
 #include "io/coord_reader.h"
 #include "io/redis_connector.h"
+#include "io/settings/settings.h"
 #include <eigen3/Eigen/Dense>
 #include <ostream>
 #include <vector>
@@ -23,7 +24,8 @@ std::time_t get_timestamp() {
 }
 
 void calc_cell() {
-    auto [coord, an, ca] = coord_reader("coord.json");
+    settings::read("settings.json");
+    auto [coord, an, ca] = coord_reader();
     int pt_size = coord.size();
     int eff_size = pt_size - (ca - an - 1);
     constant::read();

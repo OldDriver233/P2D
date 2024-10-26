@@ -60,8 +60,21 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         double j0_v = j0<2>(u_ptr[dof_cnt + i], c_ss);
         double d_j0_a_v = d_j0_a<2>(u_ptr[dof_cnt + i], c_ss);
         double d_j0_e_v = d_j0_e<2>(u_ptr[dof_cnt + i], c_ss);
-        double uoc_v = uoc<2>(c_ss);
-        double d_uoc_v = d_uoc<2>(c_ss) / c_max;
+        double uoc_v;
+        double d_uoc_v;
+        if(!settings::use_customize_uoc) {
+            uoc_v = uoc<2>(c_ss);
+            d_uoc_v = d_uoc<2>(c_ss);
+        } else {
+            VectorXreal c_ss_r(1);
+            c_ss_r << c_ss;
+            real uoc_r;
+            VectorXreal d_uoc_r;
+            auto f = [&](VectorXreal x) {return this->pfm->uoc_cathode.initial_node->eval(x);};
+            d_uoc_r = gradient(f, wrt(c_ss_r), at(c_ss_r), uoc_r);
+            uoc_v = uoc_r.val();
+            d_uoc_v = d_uoc_r(0).val();
+        }
         double bv_v = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
         double d_bv_v = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
 

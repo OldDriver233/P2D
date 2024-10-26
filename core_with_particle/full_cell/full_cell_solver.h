@@ -12,6 +12,7 @@
 #include "stiffness/stiffness_cathode.h"
 #include "stiffness/stiffness_separator.h"
 #include "particle/particle_solver.h"
+#include "../functions/function_manager.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -30,6 +31,7 @@ public:
     int step = 0;
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
     particle_solver anode_particle, cathode_particle;
+    FunctionManager manager;
 
 
     full_cell_solver(int an, int ca, const VectorXd &coord, const VectorXd &particle_coord)
@@ -37,9 +39,9 @@ public:
         anode_particle(particle_coord, constant::ds_an, constant::c_max_an),
         cathode_particle(particle_coord, constant::ds_ca, constant::c_max_ca)
          {
-        sep = stiffness_separator(coord, an, ca);
-        anode = stiffness_anode(coord, an, ca, -anode_particle.j_coeff(constant::particle_segment));
-        cathode = stiffness_cathode(coord, an, ca, -cathode_particle.j_coeff(constant::particle_segment));
+        sep = stiffness_separator(coord, an, ca, &manager);
+        anode = stiffness_anode(coord, an, ca, -anode_particle.j_coeff(constant::particle_segment), &manager);
+        cathode = stiffness_cathode(coord, an, ca, -cathode_particle.j_coeff(constant::particle_segment), &manager);
     }
 
     void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);

@@ -1,5 +1,6 @@
 #include "constant.h"
 #include "../functions/functions.h"
+#include "../io/settings/settings.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 
@@ -47,7 +48,7 @@ double constant::k_ca;
 
 
 void constant::read() {
-    std::ifstream f("config.json");
+    std::ifstream f(settings::constant_path);
     json data = json::parse(f);
     
     constant::tolerance = data["tolerance"];
