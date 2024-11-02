@@ -10,7 +10,7 @@ inline double clamp(double x, double lower, double upper) {
 }
 
 void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res, bool is_first_step) {
-    long point_size = this->point_coord.size();
+    long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
     if(is_first_step) {
         //k.insert(0, 0) = 1;
@@ -35,9 +35,9 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
-    long point_size = this->point_coord.size();
+    long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
-    long element_cnt = this->point_coord.size() - 1;
+    long element_cnt = point_size - 1;
     int iter_time = 0;
     double res_norm = 999999.0;
     double first_norm;
@@ -65,8 +65,8 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         //std::cout<<delta<<std::endl;
         du += delta;
         u += delta;
-        anode_particle.calc(c_s, u, point_size, an, ca, 1);
-        cathode_particle.calc(c_s, u, point_size, an, ca, 2);
+        anode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 1);
+        cathode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 2);
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 2 * eff_size);
         printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);

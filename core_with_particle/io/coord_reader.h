@@ -11,7 +11,7 @@
 using Eigen::VectorXd;
 using json = nlohmann::json;
 
-inline std::tuple<VectorXd, int, int> coord_reader() {
+inline std::tuple<VectorXd, int, int, int, int> coord_reader() {
     std::ifstream f(settings::coord_path);
     json data = json::parse(f);
     auto coord_vec = data["coords"].template get<std::vector<double>>();
@@ -22,7 +22,7 @@ inline std::tuple<VectorXd, int, int> coord_reader() {
     auto an = data["an"].template get<int>();
     auto ca = data["ca"].template get<int>();
 
-    return std::make_tuple(coord, an, ca);
+    return std::make_tuple(coord, an, ca, 0, coord_vec.size() - 1);
 }
 
 #endif //FEM_COORD_READER_H

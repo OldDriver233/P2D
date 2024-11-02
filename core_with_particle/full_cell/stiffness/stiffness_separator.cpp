@@ -11,8 +11,8 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                                    Eigen::Ref<VectorXd> res, 
                                    bool is_first_step) {
     const int dim = 1, n = 2;
-    long dof_cnt = this->points.size();
-    long elem_cnt = this->points.size() - 1;
+    long dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
+    long elem_cnt = dof_cnt - 1;
     MatrixXd xs = get_integration_point<dim, n>();
     MatrixXd w = get_integration_weight<dim, n>();
     double dt = constant::dt;
@@ -23,7 +23,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     double k_ref = constant::k_ref;
     double eff_1 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
 
-    for(int i = this->surface_an_sep; i < this->surface_ca_sep; ++i) {
+    for(int i = this->surface_an_sep - surface_an_coll; i < this->surface_ca_sep - surface_an_coll; ++i) {
         MatrixXd e_p = u({i, i + 1}, 0);
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
         MatrixXd e_dc = du({dof_cnt + i, dof_cnt + i + 1}, 0);
@@ -35,11 +35,11 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         MatrixXd e_rc = MatrixXd::Zero(n, 1);
 
         for(int j = 0; j < n; ++j) {
-            const MatrixXd &N = cached_matrix_N[i * n + j];
-            const MatrixXd &dN = cached_matrix_dN[i * n + j];
-            const MatrixXd &NNT = cached_matrix_NNT[i * n + j];
-            const MatrixXd &dNdNT = cached_matrix_dNdNT[i * n + j];
-            const double det = cached_det_J[i * n + j];
+            const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
+            const MatrixXd &dN = cached_matrix_dN[(i + surface_an_coll) * n + j];
+            const MatrixXd &NNT = cached_matrix_NNT[(i + surface_an_coll) * n + j];
+            const MatrixXd &dNdNT = cached_matrix_dNdNT[(i + surface_an_coll) * n + j];
+            const double det = cached_det_J[(i + surface_an_coll) * n + j];
 
             MatrixXd N_T = N.transpose();
             MatrixXd t_mat = N_T * e_c;

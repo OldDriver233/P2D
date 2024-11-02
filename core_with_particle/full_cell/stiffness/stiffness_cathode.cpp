@@ -10,9 +10,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                                  Eigen::Ref<VectorXd> res, 
                                  bool is_first_step) {
     const int dim = 1, n = 2;
-    int dof_cnt = this->points.size();
+    int dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
-    int elem_cnt = this->points.size() - 1;
+    int elem_cnt = dof_cnt - 1;
     int particle_elem_cnt = constant::particle_segment;
 
     MatrixXd xs = get_integration_point<dim, n>();
@@ -35,7 +35,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     const double F = constant::F;
     const double ce_root = std::sqrt(ce_int);
 
-    const int simd_size = elem_cnt - this->surface_ca_sep + 1;
+    const int simd_size = this->surface_ca_coll - this->surface_ca_sep + 1;
 
     double *kqp = new double[simd_size];
     double *kqc = new double[simd_size];
@@ -48,7 +48,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     auto u_ptr = u.data();
     auto du_ptr = du.data();
 
-    for(int i = this->surface_ca_sep; i <= elem_cnt; ++i) {
+    for(int i = this->surface_ca_sep - this->surface_an_coll; i <= elem_cnt; ++i) {
         const int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
 
         //const double e_dv = du_ptr[2 * dof_cnt + 2 * dof_cnt_eff + idx];
@@ -94,7 +94,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     }
 
 
-    for(int i = this->surface_ca_sep; i <= elem_cnt; ++i) {
+    for(int i = this->surface_ca_sep - this->surface_an_coll; i <= elem_cnt; ++i) {
         const int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
         const int src_idx = i - this->surface_ca_sep;
 
@@ -106,7 +106,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         res(idx + 2 * dof_cnt + dof_cnt_eff) = rq[src_idx];
     }
 
-    for(int i = this->surface_ca_sep; i < elem_cnt; i++) {
+    for(int i = this->surface_ca_sep - this->surface_an_coll; i < elem_cnt; i++) {
         int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
         MatrixXd e_p = u({i, i + 1}, 0); // phi_e
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
@@ -131,13 +131,13 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         MatrixXd e_rp = MatrixXd::Zero(n, 1);
 
         for(int j = 0; j < n; j++) {
-            const MatrixXd &N = cached_matrix_N[i * n + j];
-            const MatrixXd &dN = cached_matrix_dN[i * n + j];
-            const MatrixXd &NNT = cached_matrix_NNT[i * n + j];
-            const MatrixXd &dNdNT = cached_matrix_dNdNT[i * n + j];
+            const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
+            const MatrixXd &dN = cached_matrix_dN[(i + surface_an_coll) * n + j];
+            const MatrixXd &NNT = cached_matrix_NNT[(i + surface_an_coll) * n + j];
+            const MatrixXd &dNdNT = cached_matrix_dNdNT[(i + surface_an_coll) * n + j];
             MatrixXd N_T = N.transpose();
             MatrixXd dN_T = dN.transpose();
-            double det = cached_det_J[i * n + j];
+            double det = cached_det_J[(i + surface_an_coll) * n + j];
             double s = xs(j);
             MatrixXd t_mat = N_T * e_c;
             // t_mat should be 1x1

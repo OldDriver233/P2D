@@ -24,7 +24,7 @@ public:
     VectorXd result;
     const int iter = 10;
     const double tolerance = constant::tolerance;
-    int an, ca;
+    int an, ca, ancoll, cacoll;
     stiffness_separator sep;
     stiffness_anode anode;
     stiffness_cathode cathode;
@@ -34,14 +34,14 @@ public:
     FunctionManager manager;
 
 
-    full_cell_solver(int an, int ca, const VectorXd &coord, const VectorXd &particle_coord)
-        : point_coord(coord), an(an), ca(ca), 
+    full_cell_solver(int an, int ca, int ancoll, int cacoll, const VectorXd &coord, const VectorXd &particle_coord)
+        : point_coord(coord), an(an), ca(ca), ancoll(ancoll), cacoll(cacoll),
         anode_particle(particle_coord, constant::ds_an, constant::c_max_an),
         cathode_particle(particle_coord, constant::ds_ca, constant::c_max_ca)
          {
-        sep = stiffness_separator(coord, an, ca, &manager);
-        anode = stiffness_anode(coord, an, ca, -anode_particle.j_coeff(constant::particle_segment), &manager);
-        cathode = stiffness_cathode(coord, an, ca, -cathode_particle.j_coeff(constant::particle_segment), &manager);
+        sep = stiffness_separator(coord, an, ca, ancoll, cacoll, &manager);
+        anode = stiffness_anode(coord, an, ca, ancoll, cacoll, -anode_particle.j_coeff(constant::particle_segment), &manager);
+        cathode = stiffness_cathode(coord, an, ca, ancoll, cacoll, -cathode_particle.j_coeff(constant::particle_segment), &manager);
     }
 
     void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);

@@ -25,12 +25,12 @@ std::time_t get_timestamp() {
 
 void calc_cell() {
     settings::read("settings.json");
-    auto [coord, an, ca] = coord_reader();
-    int pt_size = coord.size();
+    auto [coord, an, ca, ancoll, cacoll] = coord_reader();
+    int pt_size = cacoll - ancoll + 1;
     int eff_size = pt_size - (ca - an - 1);
     constant::read();
     MatrixXd particle_coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
-    auto s = full_cell_solver(an, ca, coord, particle_coord);
+    auto s = full_cell_solver(an, ca, ancoll, cacoll, coord, particle_coord);
     MatrixXd u = MatrixXd::Zero(2 * pt_size + 2 * eff_size, 1);
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
 

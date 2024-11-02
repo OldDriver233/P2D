@@ -13,8 +13,8 @@ public:
   FunctionManager *pfm;
 
   stiffness_separator() {}
-  stiffness_separator(VectorXd points, int an, int ca, FunctionManager *pf)
-      : stiffness_base(points, an, ca), pfm(pf) {}
+  stiffness_separator(VectorXd points, int an, int ca, int ancoll, int cacoll, FunctionManager *pf)
+      : stiffness_base(points, an, ca, ancoll, cacoll), pfm(pf) {}
   ~stiffness_separator() {}
   void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                 const Eigen::Ref<MatrixXd> &,

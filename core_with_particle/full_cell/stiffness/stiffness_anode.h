@@ -14,9 +14,9 @@ public:
   FunctionManager *pfm;
 
   stiffness_anode() {}
-  stiffness_anode(VectorXd points, int an, int ca, double dc_ssdj,
+  stiffness_anode(VectorXd points, int an, int ca, int ancoll, int cacoll, double dc_ssdj,
                   FunctionManager *pf)
-      : stiffness_base(points, an, ca), dc_ssdj(dc_ssdj), pfm(pf) {}
+      : stiffness_base(points, an, ca, ancoll, cacoll), dc_ssdj(dc_ssdj), pfm(pf) {}
   ~stiffness_anode() {}
   void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                 const Eigen::Ref<MatrixXd> &,
