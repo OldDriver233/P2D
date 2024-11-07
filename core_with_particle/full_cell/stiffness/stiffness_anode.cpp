@@ -36,59 +36,75 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     const double F = constant::F;
     const double ce_root = std::sqrt(ce_int);
 
+    // Here we take out the evaluation of the functions for vectorization purpose.
+    // TODO: Extract the code below to one method
+    // TODO: Switch all functions to functions accepting VectorXd and use VectorXd
     const int simd_size = this->surface_an_sep - this->surface_an_coll + 1;
 
     double *kqp = new double[simd_size];
     double *kqc = new double[simd_size];
     double *kqs = new double[simd_size];
-    //double *kqa = new double[simd_size];
     double *kqq = new double[simd_size];
     double *rq = new double[simd_size];
-    //double *rv = new double[simd_size];
-    //double *ra = new double[simd_size];
     auto u_ptr = u.data();
     auto du_ptr = du.data();
+    std::vector<double> arr_j0(simd_size);
+    std::vector<double> arr_d_j0_a(simd_size);
+    std::vector<double> arr_d_j0_e(simd_size);
+    std::vector<double> arr_uoc(simd_size);
+    std::vector<double> arr_d_uoc(simd_size);
+    std::vector<double> arr_bv(simd_size);
+    std::vector<double> arr_d_bv(simd_size);
+    VectorXd c_ss(simd_size);
+
 
     for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
         const int idx = i;
 
-        //const double e_dv = du_ptr[2 * dof_cnt + 2 * dof_cnt_eff + idx];
-        const double e_q = u_ptr[2 * dof_cnt + dof_cnt_eff + idx];
-        const double c_ss = c_s((idx + 1) * (particle_elem_cnt + 1) - 1, 0);
-        //const double e_v = u_ptr[2 * dof_cnt + 2 * dof_cnt_eff + idx];
-        //const double e_a = u_ptr[2 * dof_cnt + 3 * dof_cnt_eff + idx];
+        c_ss[i] = c_s((idx + 1) * (particle_elem_cnt + 1) - 1, 0);
 
-        double j0_v = j0<1>(u_ptr[dof_cnt + idx], c_ss);
-        double d_j0_a_v = d_j0_a<1>(u_ptr[dof_cnt + idx], c_ss);
-        double d_j0_e_v = d_j0_e<1>(u_ptr[dof_cnt + idx], c_ss);
-        double uoc_v;
-        double d_uoc_v;
-        if(!settings::use_customize_uoc) {
-            uoc_v = uoc<1>(c_ss);
-            d_uoc_v = d_uoc<1>(c_ss);
-        } else {
-            VectorXreal c_ss_r(1);
-            c_ss_r << c_ss;
-            real u;
-            VectorXreal d_uoc_r;
-            auto f = [&](VectorXreal x) {return this->pfm->uoc_anode.initial_node->eval(x);};
-            d_uoc_r = gradient(f, wrt(c_ss_r), at(c_ss_r), u);
-            uoc_v = u.val();
-            d_uoc_v = d_uoc_r(0).val();
+        arr_j0[i] = j0<1>(u_ptr[dof_cnt + idx], c_ss[i]);
+        arr_d_j0_a[i] = d_j0_a<1>(u_ptr[dof_cnt + idx], c_ss[i]);
+        arr_d_j0_e[i] = d_j0_e<1>(u_ptr[dof_cnt + idx], c_ss[i]);
+    }
+    if(!settings::use_customize_uoc) {
+        for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
+            const int idx = i;
+
+            arr_uoc[i] = uoc<1>(c_ss[i]);
+            arr_d_uoc[i] = d_uoc<1>(c_ss[i]);
+            arr_bv[i] = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i]);
+            arr_d_bv[i] = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i]);
         }
-        double bv_v = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
-        double d_bv_v = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - uoc_v);
+    } else {
+        VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
+        VectorXd d_uoc = this->pfm->uoc_anode.initial_node->eval_deriv(c_ss, 0);
+        for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
+            const int idx = i;
 
-        
+            arr_uoc[i] = uoc(i);
+            arr_d_uoc[i] = d_uoc(i);
+            arr_bv[i] = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i]);
+            arr_d_bv[i] = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i]);
+        }
+    }
+
+    for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
+        const int idx = i;
+
+        double j0_v = arr_j0[idx];
+        double d_j0_a_v = arr_d_j0_a[idx];
+        double d_j0_e_v = arr_d_j0_e[idx];
+        double uoc_v = arr_uoc[idx];
+        double d_uoc_v = arr_d_uoc[idx];
+        double bv_v = arr_bv[idx];
+        double d_bv_v = arr_d_bv[idx];
 
         kqp[i] = -j0_v * d_bv_v * (-1) * c_max * ce_root;
         kqc[i] = -d_j0_e_v * bv_v * c_max * ce_root;
         kqs[i] = -j0_v * d_bv_v * c_max * ce_root;
         kqq[i] = j_ref - (d_j0_a_v * bv_v * c_max * ce_root - j0_v * d_bv_v * d_uoc_v * c_max * ce_root) * dc_ssdj;
-        //kqa[i] = -d_j0_a_v * bv_v * c_max * ce_root / j_ref - j0_v * d_bv_v * (-1) * d_uoc_v * c_max * ce_root / j_ref;
         rq[i] = u_ptr[2 * dof_cnt + dof_cnt_eff + idx] * j_ref - j0_v * bv_v * c_max * ce_root;
-        //rv[i] = e_dv / dt + 3 * e_q / R_p / c_max * j_ref;
-        //ra[i] = e_a - e_v + e_q * 0.2 * R_p / ds_eff / c_max * j_ref / d_ref;
     }
 
     for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
@@ -99,18 +115,8 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         t.emplace_back(2 * dof_cnt + dof_cnt_eff + idx, i + dof_cnt, kqc[src_idx]);
         t.emplace_back(2 * dof_cnt + dof_cnt_eff + idx, idx + 2 * dof_cnt, kqs[src_idx]);
         t.emplace_back(2 * dof_cnt + dof_cnt_eff + idx, idx + 2 * dof_cnt + dof_cnt_eff, kqq[src_idx]);
-        //t.emplace_back(2 * dof_cnt + dof_cnt_eff + idx, idx + 2 * dof_cnt + 3 * dof_cnt_eff, kqa[src_idx]);
-
-        //t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + idx, idx + 2 * dof_cnt + dof_cnt_eff, kvq);
-        //t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + idx, idx + 2 * dof_cnt + 2 * dof_cnt_eff, kvv);
-
-        //t.emplace_back(2 * dof_cnt + 3 * dof_cnt_eff + idx, idx + 2 * dof_cnt + dof_cnt_eff, kaq);
-        //t.emplace_back(2 * dof_cnt + 3 * dof_cnt_eff + idx, idx + 2 * dof_cnt + 2 * dof_cnt_eff, kav);
-        //t.emplace_back(2 * dof_cnt + 3 * dof_cnt_eff + idx, idx + 2 * dof_cnt + 3 * dof_cnt_eff, kaa);
 
         res(idx + 2 * dof_cnt + dof_cnt_eff) = rq[src_idx];
-        //res(idx + 2 * dof_cnt + 2 * dof_cnt_eff) = rv[src_idx];
-        //res(idx + 2 * dof_cnt + 3 * dof_cnt_eff) = ra[src_idx];
     }
 
     for(int i = 0; i < this->surface_an_sep - this->surface_an_coll; i++) {

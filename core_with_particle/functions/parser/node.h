@@ -6,13 +6,15 @@
 #include <iostream>
 #include <format>
 
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-using namespace autodiff;
+#include <eigen3/Eigen/Dense>
+
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 class Node {
 public:
-    virtual real eval(const Eigen::Ref<VectorXreal>&) = 0;
+    virtual VectorXd eval(const Eigen::Ref<MatrixXd>&) = 0;
+    virtual VectorXd eval_deriv(const Eigen::Ref<MatrixXd>&, int) = 0;
     virtual void show() = 0;
     ~Node() {}
 };
@@ -23,8 +25,14 @@ public:
     ~FuncNameNode() {}
     FuncNameNode(const FuncNameNode& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& _) override {
+    VectorXd eval(const Eigen::Ref<MatrixXd>& _) override {
         (void) _;
+        throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& _, int __) override {
+        (void) _;
+        (void) __;
         throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
     }
 
@@ -35,7 +43,7 @@ public:
 
 class LiteralNode: public Node {
 public:
-    real value;
+    double value;
     LiteralNode() {}
     LiteralNode(double value) {
         this->value = value;
@@ -43,13 +51,17 @@ public:
     ~LiteralNode() {}
     LiteralNode(const LiteralNode& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& _) override {
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return VectorXd::Ones(x.rows()) * value;
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int _) override {
         (void) _;
-        return value;
+        return VectorXd::Zero(x.rows());
     }
 
     void show() override {
-        std::cout<<std::format("{{ LiteralNode value = {} }}", value.val());
+        std::cout<<std::format("{{ LiteralNode value = {} }}", value);
     }
 };
 
@@ -61,8 +73,13 @@ public:
     ~VariableNode() {}
     VariableNode(const VariableNode& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return x(variable_id);
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return x.col(variable_id);
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        if(variable_id == wrt) return VectorXd::Ones(x.rows());
+        else return VectorXd::Zero(x.rows());
     }
 
     void show() override {
@@ -78,8 +95,12 @@ public:
     ~NegateNode() {}
     NegateNode(const NegateNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
         return -val->eval(x);
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return -val->eval_deriv(x, wrt);
     }
 
     void show() override {
@@ -97,8 +118,12 @@ public:
     ~ExpNode() {}
     ExpNode(const ExpNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return exp(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().exp();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return val->eval(x).array().exp() * val->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -116,8 +141,12 @@ public:
     ~SinNode() {}
     SinNode(const SinNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return sin(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().sin();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return val->eval(x).array().cos() * val->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -135,8 +164,12 @@ public:
     ~CosNode() {}
     CosNode(const CosNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return cos(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().cos();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return -val->eval(x).array().sin() * val->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -154,8 +187,13 @@ public:
     ~TanNode() {}
     TanNode(const TanNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return tan(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().tan();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        Eigen::ArrayXd cos = val->eval(x).array().cos().array();
+        return val->eval_deriv(x, wrt).array() / (cos * cos);
     }
 
     void show() override {
@@ -173,8 +211,12 @@ public:
     ~SinhNode() {}
     SinhNode(const SinhNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return sinh(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().sinh();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return val->eval(x).array().cosh() * val->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -192,8 +234,12 @@ public:
     ~CoshNode() {}
     CoshNode(const CoshNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return cosh(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().cosh();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return val->eval(x).array().sinh() * val->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -211,8 +257,13 @@ public:
     ~TanhNode() {}
     TanhNode(const TanhNode& other) = delete;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return tanh(val->eval(x));
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return val->eval(x).array().tanh();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        Eigen::ArrayXd cosh = val->eval(x).array().cosh().array();
+        return val->eval_deriv(x, wrt).array() / (cosh * cosh);
     }
 
     void show() override {
@@ -231,8 +282,12 @@ public:
     AddNode(const AddNode& other) = delete;
     AddNode(AddNode&& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return left->eval(x) + right->eval(x);
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return left->eval(x).array() + right->eval(x).array();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return left->eval_deriv(x, wrt).array() + right->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -253,8 +308,12 @@ public:
     SubNode(const SubNode& other) = delete;
     SubNode(SubNode&& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return left->eval(x) - right->eval(x);
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return left->eval(x).array() - right->eval(x).array();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return left->eval_deriv(x, wrt).array() - right->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -275,8 +334,12 @@ public:
     MultNode(const MultNode& other) = delete;
     MultNode(MultNode&& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return left->eval(x) * right->eval(x);
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return left->eval(x).array() * right->eval(x).array();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        return left->eval_deriv(x, wrt).array() * right->eval(x).array() + left->eval(x).array() * right->eval_deriv(x, wrt).array();
     }
 
     void show() override {
@@ -297,8 +360,13 @@ public:
     DivNode(const DivNode& other) = delete;
     DivNode(DivNode&& other) = default;
 
-    real eval(const Eigen::Ref<VectorXreal>& x) override {
-        return left->eval(x) / right->eval(x);
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return left->eval(x).array() / right->eval(x).array();
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        Eigen::ArrayXd rval = right->eval(x).array();
+        return (left->eval_deriv(x, wrt).array() * rval - left->eval(x).array() * right->eval_deriv(x, wrt).array()) / (rval * rval);
     }
 
     void show() override {

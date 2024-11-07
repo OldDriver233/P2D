@@ -3,6 +3,9 @@
 #include "../constants/constant.h"
 #include <cmath>
 #include <numbers>
+#include <eigen3/Eigen/Dense>
+
+using Eigen::VectorXd;
 
 inline double bv(double eta) {
   const double F = 96485.3329;
