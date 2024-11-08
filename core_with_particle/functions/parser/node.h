@@ -52,12 +52,12 @@ public:
     LiteralNode(const LiteralNode& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return VectorXd::Ones(x.rows()) * value;
+        return std::move(VectorXd::Ones(x.rows()) * value);
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int _) override {
         (void) _;
-        return VectorXd::Zero(x.rows());
+        return std::move(VectorXd::Zero(x.rows()));
     }
 
     void show() override {
@@ -78,8 +78,8 @@ public:
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        if(variable_id == wrt) return VectorXd::Ones(x.rows());
-        else return VectorXd::Zero(x.rows());
+        if(variable_id == wrt) return std::move(VectorXd::Ones(x.rows()));
+        else return std::move(VectorXd::Zero(x.rows()));
     }
 
     void show() override {
@@ -96,11 +96,11 @@ public:
     NegateNode(const NegateNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return -val->eval(x);
+        return std::move(-val->eval(x));
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return -val->eval_deriv(x, wrt);
+        return std::move(-val->eval_deriv(x, wrt));
     }
 
     void show() override {
@@ -119,11 +119,11 @@ public:
     ExpNode(const ExpNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().exp();
+        return std::move(val->eval(x).array().exp());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return val->eval(x).array().exp() * val->eval_deriv(x, wrt).array();
+        return std::move(val->eval(x).array().exp() * val->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -142,11 +142,11 @@ public:
     SinNode(const SinNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().sin();
+        return std::move(val->eval(x).array().sin());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return val->eval(x).array().cos() * val->eval_deriv(x, wrt).array();
+        return std::move(val->eval(x).array().cos() * val->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -165,11 +165,11 @@ public:
     CosNode(const CosNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().cos();
+        return std::move(val->eval(x).array().cos());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return -val->eval(x).array().sin() * val->eval_deriv(x, wrt).array();
+        return std::move(-val->eval(x).array().sin() * val->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -188,12 +188,12 @@ public:
     TanNode(const TanNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().tan();
+        return std::move(val->eval(x).array().tan());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
         Eigen::ArrayXd cos = val->eval(x).array().cos().array();
-        return val->eval_deriv(x, wrt).array() / (cos * cos);
+        return std::move(val->eval_deriv(x, wrt).array() / (cos * cos));
     }
 
     void show() override {
@@ -212,11 +212,11 @@ public:
     SinhNode(const SinhNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().sinh();
+        return std::move(val->eval(x).array().sinh());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return val->eval(x).array().cosh() * val->eval_deriv(x, wrt).array();
+        return std::move(val->eval(x).array().cosh() * val->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -235,11 +235,11 @@ public:
     CoshNode(const CoshNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().cosh();
+        return std::move(val->eval(x).array().cosh());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return val->eval(x).array().sinh() * val->eval_deriv(x, wrt).array();
+        return std::move(val->eval(x).array().sinh() * val->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -258,12 +258,12 @@ public:
     TanhNode(const TanhNode& other) = delete;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return val->eval(x).array().tanh();
+        return std::move(val->eval(x).array().tanh());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
         Eigen::ArrayXd cosh = val->eval(x).array().cosh().array();
-        return val->eval_deriv(x, wrt).array() / (cosh * cosh);
+        return std::move(val->eval_deriv(x, wrt).array() / (cosh * cosh));
     }
 
     void show() override {
@@ -283,11 +283,11 @@ public:
     AddNode(AddNode&& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return left->eval(x).array() + right->eval(x).array();
+        return std::move(left->eval(x).array() + right->eval(x).array());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return left->eval_deriv(x, wrt).array() + right->eval_deriv(x, wrt).array();
+        return std::move(left->eval_deriv(x, wrt).array() + right->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -309,11 +309,11 @@ public:
     SubNode(SubNode&& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return left->eval(x).array() - right->eval(x).array();
+        return std::move(left->eval(x).array() - right->eval(x).array());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return left->eval_deriv(x, wrt).array() - right->eval_deriv(x, wrt).array();
+        return std::move(left->eval_deriv(x, wrt).array() - right->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -335,11 +335,11 @@ public:
     MultNode(MultNode&& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return left->eval(x).array() * right->eval(x).array();
+        return std::move(left->eval(x).array() * right->eval(x).array());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return left->eval_deriv(x, wrt).array() * right->eval(x).array() + left->eval(x).array() * right->eval_deriv(x, wrt).array();
+        return std::move(left->eval_deriv(x, wrt).array() * right->eval(x).array() + left->eval(x).array() * right->eval_deriv(x, wrt).array());
     }
 
     void show() override {
@@ -361,12 +361,12 @@ public:
     DivNode(DivNode&& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return left->eval(x).array() / right->eval(x).array();
+        return std::move(left->eval(x).array() / right->eval(x).array());
     }
 
     VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
         Eigen::ArrayXd rval = right->eval(x).array();
-        return (left->eval_deriv(x, wrt).array() * rval - left->eval(x).array() * right->eval_deriv(x, wrt).array()) / (rval * rval);
+        return std::move((left->eval_deriv(x, wrt).array() * rval - left->eval(x).array() * right->eval_deriv(x, wrt).array()) / (rval * rval));
     }
 
     void show() override {
