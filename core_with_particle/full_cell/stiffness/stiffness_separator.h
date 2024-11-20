@@ -10,16 +10,17 @@ using Eigen::VectorXd;
 
 class stiffness_separator : public stiffness_base {
 public:
-  FunctionManager *pfm;
+    FunctionManager *pfm;
 
-  stiffness_separator() {}
-  stiffness_separator(VectorXd points, int an, int ca, int ancoll, int cacoll, FunctionManager *pf)
-      : stiffness_base(points, an, ca, ancoll, cacoll), pfm(pf) {}
-  ~stiffness_separator() {}
-  void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
-                const Eigen::Ref<MatrixXd> &,
-                std::vector<Eigen::Triplet<double>> &, Eigen::Ref<VectorXd>,
-                bool) override;
+    stiffness_separator() {}
+    stiffness_separator(VectorXd points, int an, int ca, int ancoll, int cacoll,
+                        FunctionManager *pf)
+        : stiffness_base(points, an, ca, ancoll, cacoll), pfm(pf) {}
+    ~stiffness_separator() {}
+    void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
+                  const Eigen::Ref<MatrixXd> &,
+                  std::vector<Eigen::Triplet<double>> &, Eigen::Ref<VectorXd>,
+                  bool) override;
 };
 
 #endif // FEM_STIFFNESS_SEPARATOR_H

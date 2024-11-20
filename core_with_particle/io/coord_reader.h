@@ -21,8 +21,10 @@ inline std::tuple<VectorXd, int, int, int, int> coord_reader() {
     }
     auto an = data["an"].template get<int>();
     auto ca = data["ca"].template get<int>();
+    auto an_coll = data["an_coll"].template get<int>();
+    auto ca_coll = data["ca_coll"].template get<int>();
 
-    return std::make_tuple(coord, an, ca, 0, coord_vec.size() - 1);
+    return std::make_tuple(coord, an, ca, an_coll, ca_coll);
 }
 
 #endif //FEM_COORD_READER_H

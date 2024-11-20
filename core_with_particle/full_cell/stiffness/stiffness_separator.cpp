@@ -13,6 +13,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     const int dim = 1, n = 2;
     long dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
     long elem_cnt = dof_cnt - 1;
+    int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
     MatrixXd xs = get_integration_point<dim, n>();
     MatrixXd w = get_integration_weight<dim, n>();
     double dt = constant::dt;
@@ -22,17 +23,22 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     double ce_int = constant::ce_int;
     double k_ref = constant::k_ref;
     double eff_1 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
+    const double rho = 1100, cap = 700, lambda = 0.16;
 
     for(int i = this->surface_an_sep - surface_an_coll; i < this->surface_ca_sep - surface_an_coll; ++i) {
         MatrixXd e_p = u({i, i + 1}, 0);
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
+        MatrixXd e_t = u({2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll}, 0);
+        MatrixXd e_dt = du({2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll}, 0);
         MatrixXd e_dc = du({dof_cnt + i, dof_cnt + i + 1}, 0);
         MatrixXd e_kpp = MatrixXd::Zero(n, n);
         MatrixXd e_kpc = MatrixXd::Zero(n, n);
         MatrixXd e_kcp = MatrixXd::Zero(n, n);
         MatrixXd e_kcc = MatrixXd::Zero(n, n);
+        MatrixXd e_ktt = MatrixXd::Zero(n, n);
         MatrixXd e_rp = MatrixXd::Zero(n, 1);
         MatrixXd e_rc = MatrixXd::Zero(n, 1);
+        MatrixXd e_rt = MatrixXd::Zero(n, 1);
 
         for(int j = 0; j < n; ++j) {
             const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
@@ -63,6 +69,11 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             e_rc += epsilon * eff_1 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det;
             e_kcc += epsilon * eff_1 * NNT * w(j) * det + d_eff * dNdNT * w(j) * det;
             //e_kcc = MatrixXd::Identity(n, n);
+
+            // t part
+            // t part
+            e_ktt += rho * cap * NNT / constant::dt * w(j) * det + lambda * dNdNT * w(j) * det;
+            e_rt += rho * cap * NNT * e_dt / constant::dt * w(j) * det + lambda * dNdNT * e_t * w(j) * det;
         }
 
         #pragma omp critical
@@ -77,9 +88,11 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                     t.emplace_back(i + j, i + l + dof_cnt, e_kpc(j, l));
                     t.emplace_back(i + j + dof_cnt, i + l, e_kcp(j, l));
                     t.emplace_back(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l));
+                    t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l)));
                 }
                 res(i + j) += e_rp(j);
                 res(i + j + dof_cnt) += e_rc(j);
+                res(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j) += e_rt(j);
             }
         }
     }

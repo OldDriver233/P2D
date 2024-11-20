@@ -45,6 +45,7 @@ double constant::bruggeman;
 double constant::trans;
 double constant::k_an;
 double constant::k_ca;
+double constant::I_app = 30.0;
 
 
 void constant::read() {

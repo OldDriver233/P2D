@@ -49,6 +49,8 @@ add_executable(fem main.cpp
         full_cell/stiffness/stiffness_anode.cpp
         full_cell/stiffness/stiffness_cathode.h
         full_cell/stiffness/stiffness_cathode.cpp
+        full_cell/stiffness/stiffness_anode_collector.cpp
+        full_cell/stiffness/stiffness_cathode_collector.cpp
         full_cell/particle/particle_solver.h
         full_cell/particle/particle_solver.cpp
         functions/parser/parser.cpp

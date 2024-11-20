@@ -12,6 +12,7 @@ inline double clamp(double x, double lower, double upper) {
 void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res, bool is_first_step) {
     long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
+    long all_size = this->point_coord.size();
     if(is_first_step) {
         //k.insert(0, 0) = 1;
         //k.insert(2 * point_size, 2 * point_size) = 1;
@@ -32,35 +33,43 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
     }
+    res(2 * point_size + 2 * eff_size) += 1 * (297.0 - u(2 * point_size + 2 * eff_size, 0));
+    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (u(2 * point_size + 2 * eff_size, 0) - 297.0);
+
+
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
     long element_cnt = point_size - 1;
+    long all_size = this->point_coord.size();
     int iter_time = 0;
     double res_norm = 999999.0;
     double first_norm;
-    MatrixXd du = MatrixXd::Zero(2 * point_size + 2 * eff_size, 1);
+    MatrixXd du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
     std::vector<Eigen::Triplet<double>> coeff;
 
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
 
     while(iter_time < iter && res_norm > tolerance) {
-        Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size);
-        VectorXd res = VectorXd::Zero(2 * point_size + 2 * eff_size);
+        Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size, 2 * point_size + 2 * eff_size + all_size);
+        VectorXd res = VectorXd::Zero(2 * point_size + 2 * eff_size + all_size);
         coeff.clear();
-        coeff.reserve(12 * point_size);
+        coeff.reserve(12 * all_size);
 
         this->anode.generate(u, du, c_s, coeff, res, step == 0);
         this->sep.generate(u, du, c_s, coeff, res, step == 0);
         this->cathode.generate(u, du, c_s, coeff, res, step == 0);
+        this->anode_collector.generate(u, du, c_s, coeff, res, step == 0);
+        this->cathode_collector.generate(u, du, c_s, coeff, res, step == 0);
         k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res, step == 0);
 
         solver.compute(k);
         //std::cout<<k<<std::endl;
+        //std::cout<<res<<std::endl;
         MatrixXd delta = -solver.solve(res);
         //std::cout<<delta<<std::endl;
         du += delta;
@@ -68,7 +77,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         anode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 1);
         cathode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 2);
         double norm = delta.norm();
-        res_norm = res.norm() / (2 * point_size + 2 * eff_size);
+        res_norm = res.norm() / (2 * point_size + 2 * eff_size + all_size);
         printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
         
 
