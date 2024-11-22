@@ -68,7 +68,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         apply_boundary(u, k, res, step == 0);
 
         solver.compute(k);
-        //std::cout<<k<<std::endl;
+        std::cout<<k<<std::endl;
         //std::cout<<res<<std::endl;
         MatrixXd delta = -solver.solve(res);
         //std::cout<<delta<<std::endl;
