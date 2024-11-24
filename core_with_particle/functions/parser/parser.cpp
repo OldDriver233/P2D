@@ -154,16 +154,26 @@ std::unique_ptr<Node> Parser::term() {
 }
 
 std::unique_ptr<Node> Parser::factor() {
-    auto expr = this->unary();
+    auto expr = this->power();
     while (match(TokenType::ASTERISK) || match(TokenType::SLASH)) {
         Token op = peek_prev();
-        auto right = this->unary();
+        auto right = this->power();
         if (op.type == TokenType::ASTERISK) {
             expr =
                 std::make_unique<MultNode>(std::move(expr), std::move(right));
         } else {
             expr = std::make_unique<DivNode>(std::move(expr), std::move(right));
         }
+    }
+    return expr;
+}
+
+std::unique_ptr<Node> Parser::power() {
+    auto expr = this->unary();
+    while (match(TokenType::CARET)) {
+        Token op = peek_prev();
+        auto right = this->unary();
+        expr = std::make_unique<PowNode>(std::move(expr), std::move(right));
     }
     return expr;
 }

@@ -22,19 +22,19 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size + eff_size - 1, 0) = -(uoc<2>(constant::c_int_ca / constant::c_max_ca) - u(2 * point_size + eff_size - 1, 0));
         k.insert(2 * point_size, 2 * point_size) = 1;
         res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
-    } else {
-        k.insert(2 * point_size, 2 * point_size) = 1;
-        res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
+        } else {
+            k.insert(2 * point_size, 2 * point_size) = 1;
+            res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
 
-        double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
-        //double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
+            double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
+            //double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
         //double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
         double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
     }
-    res(2 * point_size + 2 * eff_size) += 1 * (297.0 - u(2 * point_size + 2 * eff_size, 0));
-    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (u(2 * point_size + 2 * eff_size, 0) - 297.0);
+    res(2 * point_size + 2 * eff_size) += 1 * (297.0 - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
+    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (u(2 * point_size + 2 * eff_size + all_size - 1, 0) - 297.0) * constant::l_ref;
 
 
 }
@@ -68,7 +68,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         apply_boundary(u, k, res, step == 0);
 
         solver.compute(k);
-        std::cout<<k<<std::endl;
+        //std::cout<<k<<std::endl;
         //std::cout<<res<<std::endl;
         MatrixXd delta = -solver.solve(res);
         //std::cout<<delta<<std::endl;

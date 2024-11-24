@@ -47,6 +47,7 @@ public:
     void parse();
     std::unique_ptr<Node> expr();
     std::unique_ptr<Node> factor();
+    std::unique_ptr<Node> power();
     std::unique_ptr<Node> unary();
     std::unique_ptr<Node> term();
     std::unique_ptr<Node> call();

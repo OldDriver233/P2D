@@ -377,3 +377,30 @@ public:
         std::cout<<std::format(" }}");
     }
 };
+
+class PowNode: public Node {
+public:
+    std::unique_ptr<Node> left, right;
+    PowNode() {}
+    PowNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right): left(std::move(left)), right(std::move(right)) {}
+    ~PowNode() {}
+    PowNode(const DivNode& other) = delete;
+    PowNode(PowNode&& other) = default;
+
+    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
+        return std::move(left->eval(x).array().pow(right->eval(x).array()));
+    }
+
+    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
+        Eigen::ArrayXd rval = right->eval(x).array();
+        return std::move(rval * left->eval(x).array().pow(rval - 1) * left->eval_deriv(x, wrt).array());
+    }
+
+    void show() override {
+        std::cout<<std::format("{{ PowNode \nLeft = ");
+        left->show();
+        std::cout<<std::format("\nRight = ");
+        right->show();
+        std::cout<<std::format(" }}");
+    }
+};
