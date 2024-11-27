@@ -1,0 +1,7 @@
+{
+    "use_customize_uoc": true,
+    "uoc_anode_path": "anode.txt",
+    "uoc_cathode_path": "cathode.txt",
+    "anode_entropy_path": "anode_entropy.txt",
+    "cathode_entropy_path": "cathode_entropy.txt"
+}

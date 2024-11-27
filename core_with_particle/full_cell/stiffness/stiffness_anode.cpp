@@ -2,6 +2,7 @@
 #include "../../functions/functions.h"
 #include "../../constants/constant.h"
 #include "Eigen/src/Core/Map.h"
+#include "Eigen/src/Core/Matrix.h"
 #include <cstdio>
 
 MatrixXd matrix_square(MatrixXd in) {
@@ -62,6 +63,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> arr_bv(simd_size);
     std::vector<double> arr_d_bv(simd_size);
     double *arr_eta = new double[simd_size];
+    double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
 
 
@@ -78,23 +80,26 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
             const int idx = i;
 
-            arr_eta[i] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i];
             arr_uoc[i] = uoc<1>(c_ss[i]);
+            arr_eta[i] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i];
             arr_d_uoc[i] = d_uoc<1>(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
+            arr_du = 0;
         }
     } else {
         VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
         VectorXd d_uoc = this->pfm->uoc_anode.initial_node->eval_deriv(c_ss, 0);
+        VectorXd v_du = this->pfm->uoc_anode.initial_node->eval(c_ss);
         for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
             const int idx = i;
 
-            arr_eta[i] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i];
             arr_uoc[i] = uoc(i);
+            arr_eta[i] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i];
             arr_d_uoc[i] = d_uoc(i);
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
+            arr_du[i] = v_du(i);
         }
     }
 
@@ -245,7 +250,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l)));
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l, e_ktp(j, l)));
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + dof_cnt, e_ktc(j, l)));
-                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_ktc(j, l)));
+                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_ktq(j, l)));
             }
             res(i + j) += e_rp(j);
             res(i + j + dof_cnt) += e_rc(j);
@@ -261,4 +266,5 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     delete[] kqq;
     delete[] rq;
     delete[] arr_eta;
+    delete[] arr_du;
 }

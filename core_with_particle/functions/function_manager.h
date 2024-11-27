@@ -7,6 +7,8 @@ class FunctionManager{
 public:
     Parser uoc_anode;
     Parser uoc_cathode;
+    Parser anode_entropy;
+    Parser cathode_entropy;
     Parser kappa;
 
     FunctionManager() {
@@ -15,6 +17,10 @@ public:
             uoc_anode.init(settings::uoc_anode_path);
             uoc_cathode.vector_size = 1;
             uoc_cathode.init(settings::uoc_cathode_path);
+            anode_entropy.vector_size = 1;
+            anode_entropy.init(settings::anode_entropy_path);
+            cathode_entropy.vector_size = 1;
+            cathode_entropy.init(settings::cathode_entropy_path);
         }
     };
 };

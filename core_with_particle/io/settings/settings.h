@@ -11,6 +11,8 @@ public:
     static std::string uoc_anode_path;
     static std::string uoc_cathode_path;
     static std::string kappa_path;
+    static std::string anode_entropy_path;
+    static std::string cathode_entropy_path;
 
     static void read(const std::string& filename);
 };

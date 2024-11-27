@@ -55,6 +55,8 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> arr_d_uoc(simd_size);
     std::vector<double> arr_bv(simd_size);
     std::vector<double> arr_d_bv(simd_size);
+    double *arr_eta = new double[simd_size];
+    double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
 
     for(int i = this->surface_ca_sep - this->surface_an_coll; i <= elem_cnt; ++i) {
@@ -74,21 +76,26 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             const int src_idx = i - this->surface_ca_sep + this->surface_an_coll;
 
             arr_uoc[src_idx] = uoc<2>(c_ss[src_idx]);
+            arr_eta[src_idx] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx];
             arr_d_uoc[src_idx] = d_uoc<2>(c_ss[src_idx]);
             arr_bv[src_idx] = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx]);
             arr_d_bv[src_idx] = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx]);
+            arr_du = 0;
         }
     } else {
         VectorXd uoc = this->pfm->uoc_cathode.initial_node->eval(c_ss);
         VectorXd d_uoc = this->pfm->uoc_cathode.initial_node->eval_deriv(c_ss, 0);
+        VectorXd v_du = this->pfm->uoc_anode.initial_node->eval(c_ss);
         for(int i = this->surface_ca_sep - this->surface_an_coll; i <= elem_cnt; ++i) {
             const int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
             const int src_idx = i - this->surface_ca_sep + this->surface_an_coll;
 
             arr_uoc[src_idx] = uoc(src_idx);
+            arr_eta[src_idx] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx];
             arr_d_uoc[src_idx] = d_uoc(src_idx);
             arr_bv[src_idx] = bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx]);
             arr_d_bv[src_idx] = d_bv(u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx]);
+            arr_du[src_idx] = v_du(src_idx);
         }
     }
 
@@ -144,6 +151,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         MatrixXd e_ktt = MatrixXd::Zero(n, n);
         MatrixXd e_ktp = MatrixXd::Zero(n, n);
         MatrixXd e_ktc = MatrixXd::Zero(n, n);
+        MatrixXd e_ktq = MatrixXd::Zero(n, n);
 
         MatrixXd e_rs = MatrixXd::Zero(n, 1);
         MatrixXd e_rc = MatrixXd::Zero(n, 1);
@@ -203,15 +211,22 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             MatrixXd e_dpdc = (dN_T * e_p).array() * (dN_T * e_c).array();
             MatrixXd e_tdc = (N_T * e_t).array() * (dN_T * e_c).array();
             MatrixXd e_tdp = (N_T * e_t).array() * (dN_T * e_p).array();
+            MatrixXd e_eta = Eigen::Map<VectorXd>(arr_eta + i - this->surface_ca_sep + this->surface_an_coll, 2);
+            MatrixXd e_qeta = (N_T * e_q).array() * (N_T * e_eta).array();
+            // Heat transfer
             e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det 
                      + lambda * dNdNT * w(j) * det;
+            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det 
+                    + lambda * dNdNT * e_t * w(j) * det;
+            // Q_ohm
             e_ktt += -(kd_eff / constant::T * N * e_dpdc * N_T / lower);
             e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T + kd_eff / constant::T * N * e_tdc * dN_T / lower);
             e_ktc += -(kd_eff / constant::T * N * e_tdp * dN_T / lower);
-            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det 
-                    + lambda * dNdNT * e_t * w(j) * det;
-            e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
             e_rt += -(k_eff * N * e_dp2 + kd_eff / constant::T * N * e_tdpdc / lower) * k_ref * w(j) * det;
+            e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
+            // Q_rxn
+            e_ktq += -(constant::F * a * N * e_eta * N_T) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+            e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
         }
 
         for(int j = 0; j < n; j++) {
@@ -231,6 +246,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l)));
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l, e_ktp(j, l)));
                 t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + dof_cnt, e_ktc(j, l)));
+                //t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, idx + l + 2 * dof_cnt + dof_cnt_eff, e_ktq(j, l)));
             }
             res(i + j) += e_rp(j);
             res(i + j + dof_cnt) += e_rc(j);
@@ -245,4 +261,6 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     delete[] kqs;
     delete[] kqq;
     delete[] rq;
+    delete[] arr_eta;
+    delete[] arr_du;
 }
