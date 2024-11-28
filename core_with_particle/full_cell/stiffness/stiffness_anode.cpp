@@ -90,7 +90,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     } else {
         VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
         VectorXd d_uoc = this->pfm->uoc_anode.initial_node->eval_deriv(c_ss, 0);
-        VectorXd v_du = this->pfm->uoc_anode.initial_node->eval(c_ss);
+        VectorXd v_du = this->pfm->anode_entropy.initial_node->eval(c_ss);
         for(int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
             const int idx = i;
 
@@ -214,7 +214,11 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             MatrixXd e_tdc = (N_T * e_t).array() * (dN_T * e_c).array();
             MatrixXd e_tdp = (N_T * e_t).array() * (dN_T * e_p).array();
             MatrixXd e_eta = Eigen::Map<VectorXd>(arr_eta + i, 2);
+            MatrixXd e_du = Eigen::Map<VectorXd>(arr_du + i, 2);
+            MatrixXd e_qt = (N_T * e_q).array() * (N_T * e_t).array();
             MatrixXd e_qeta = (N_T * e_q).array() * (N_T * e_eta).array();
+            MatrixXd e_qtdu = (N_T * e_q).array() * (N_T * e_t).array() * (N_T * e_du).array();
+            MatrixXd e_qdu = (N_T * e_q).array() * (N_T * e_du).array();
             // Heat transfer
             e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det 
                      + lambda * dNdNT * w(j) * det;
@@ -229,6 +233,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             // Q_rxn
             e_ktq += -(constant::F * a * N * e_eta * N_T) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
             e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+            // Q_rev
+            e_ktt += -(constant::F * a * N * e_qdu * N_T) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+            e_rt += -(constant::F * a * N * e_qtdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
         }
 
         for(int j = 0; j < n; j++) {
