@@ -161,8 +161,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         for(int j = 0; j < n; j++) {
             const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
             const MatrixXd &dN = cached_matrix_dN[(i + surface_an_coll) * n + j];
-            const MatrixXd &N2 = cached_matrix_N2[(i + surface_an_coll) * n + j];
-            const MatrixXd &dN2 = cached_matrix_dN2[(i + surface_an_coll) * n + j];
+            const MatrixXd &NdNT = cached_matrix_NdNT[(i + surface_an_coll) * n + j];
             const MatrixXd &NNT = cached_matrix_NNT[(i + surface_an_coll) * n + j];
             const MatrixXd &dNdNT = cached_matrix_dNdNT[(i + surface_an_coll) * n + j];
             MatrixXd N_T = N.transpose();
@@ -205,34 +204,41 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             //e_kpp = MatrixXd::Identity(2, 2);
 
             // t part
-            MatrixXd e_dp2 = (dN_T * e_p).array() * (dN_T * e_p).array();
-            MatrixXd e_ds2 = (dN_T * e_s).array() * (dN_T * e_s).array();
-            MatrixXd e_tdpdc = (N_T * e_t).array() * (dN_T * e_p).array() * (dN_T * e_c).array();
-            MatrixXd e_dpdc = (dN_T * e_p).array() * (dN_T * e_c).array();
-            MatrixXd e_tdc = (N_T * e_t).array() * (dN_T * e_c).array();
-            MatrixXd e_tdp = (N_T * e_t).array() * (dN_T * e_p).array();
             MatrixXd e_eta = Eigen::Map<VectorXd>(arr_eta + i - this->surface_ca_sep + this->surface_an_coll, 2);
             MatrixXd e_du = Eigen::Map<VectorXd>(arr_du + i - this->surface_ca_sep + this->surface_an_coll, 2);
-            MatrixXd e_qeta = (N_T * e_q).array() * (N_T * e_eta).array();
-            MatrixXd e_qt = (N_T * e_q).array() * (N_T * e_t).array();
-            MatrixXd e_qtdu = (N_T * e_q).array() * (N_T * e_t).array() * (N_T * e_du).array();
-            MatrixXd e_qdu = (N_T * e_q).array() * (N_T * e_du).array();
+            double dNe_p = (dN_T * e_p).sum();
+            double dNe_s = (dN_T * e_s).sum();
+            double Ne_t = (N_T * e_t).sum();
+            double dNe_c = (dN_T * e_c).sum();
+            double Ne_q = (N_T * e_q).sum();
+            double Ne_eta = (N_T * e_eta).sum();
+            double Ne_du = (N_T * e_du).sum();
+            double e_dp2 = dNe_p * dNe_p;
+            double e_ds2 = dNe_s * dNe_s;
+            double e_tdpdc = Ne_t * dNe_p * dNe_c;
+            double e_dpdc = dNe_p * dNe_c;
+            double e_tdc = Ne_t * dNe_c;
+            double e_tdp = Ne_t * dNe_p;
+            double e_qt = Ne_q * Ne_t;
+            double e_qeta = Ne_q * Ne_eta;
+            double e_qtdu = Ne_q * Ne_t * Ne_du;
+            double e_qdu = Ne_q * Ne_du;
             // Heat transfer
             e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det 
                      + lambda * dNdNT * w(j) * det;
             e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det 
                     + lambda * dNdNT * e_t * w(j) * det;
             // Q_ohm
-            e_ktt += -(kd_eff / constant::T * N * e_dpdc * N_T / lower);
-            e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T + kd_eff / constant::T * N * e_tdc * dN_T / lower);
-            e_ktc += -(kd_eff / constant::T * N * e_tdp * dN_T / lower);
+            e_ktt += -(kd_eff / constant::T * NNT * e_dpdc / lower);
+            e_ktp += -(k_eff * NdNT * 2 * dNe_p + kd_eff / constant::T * NdNT * e_tdc / lower);
+            e_ktc += -(kd_eff / constant::T * NdNT * e_tdp / lower);
             e_rt += -(k_eff * N * e_dp2 + kd_eff / constant::T * N * e_tdpdc / lower) * k_ref * w(j) * det;
             e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
             // Q_rxn
-            e_ktq += -(constant::F * a * N * e_eta * N_T) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+            e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
             e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
             // Q_rev
-            e_ktt += -(constant::F * a * N * e_qdu * N_T) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+            e_ktt += -(constant::F * a * NNT * e_qdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
             e_rt += -(constant::F * a * N * e_qtdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
         }
 

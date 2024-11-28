@@ -1,5 +1,4 @@
 #include "stiffness_anode_collector.h"
-#include <iostream>
 
 void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u, 
                                const Eigen::Ref<MatrixXd> &du,

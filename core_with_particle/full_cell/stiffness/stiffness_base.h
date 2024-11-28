@@ -13,8 +13,8 @@ using Eigen::VectorXd;
 class stiffness_base {
 public:
   std::vector<MatrixXd> cached_matrix_N, cached_matrix_dN;
-  std::vector<MatrixXd> cached_matrix_N2, cached_matrix_dN2;
   std::vector<MatrixXd> cached_matrix_NNT, cached_matrix_dNdNT;
+  std::vector<MatrixXd> cached_matrix_NdNT;
   std::vector<double> cached_det_J;
   MatrixXd points;
   int surface_an_coll, surface_an_sep, surface_ca_sep, surface_ca_coll;
@@ -43,13 +43,10 @@ public:
         auto J = coords * dNds;
         double det_J = J.determinant();
         dN = dNds / det_J;
-        MatrixXd N2 = N.array() * N.array();
-        MatrixXd dN2 = dN.array() * dN.array();
 
         this->cached_matrix_N.push_back(N);
         this->cached_matrix_dN.push_back(dN);
-        this->cached_matrix_N2.push_back(N2);
-        this->cached_matrix_dN2.push_back(dN2);
+        this->cached_matrix_NdNT.push_back(N * dN.transpose());
         this->cached_matrix_NNT.push_back(N * N.transpose());
         this->cached_matrix_dNdNT.push_back(dN * dN.transpose());
         this->cached_det_J.push_back(det_J);

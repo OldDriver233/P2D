@@ -45,8 +45,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         for(int j = 0; j < n; ++j) {
             const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
             const MatrixXd &dN = cached_matrix_dN[(i + surface_an_coll) * n + j];
-            const MatrixXd &N2 = cached_matrix_N2[(i + surface_an_coll) * n + j];
-            const MatrixXd &dN2 = cached_matrix_dN2[(i + surface_an_coll) * n + j];
+            const MatrixXd &NdNT = cached_matrix_NdNT[(i + surface_an_coll) * n + j];
             const MatrixXd &NNT = cached_matrix_NNT[(i + surface_an_coll) * n + j];
             const MatrixXd &dNdNT = cached_matrix_dNdNT[(i + surface_an_coll) * n + j];
             const double det = cached_det_J[(i + surface_an_coll) * n + j];
