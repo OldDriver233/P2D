@@ -10,6 +10,7 @@ option(DEBUG "Enable debug" OFF)
 option(USE_BLAS_LAPACK "Enable blas and lapack" OFF)
 option(USE_MKL "Enable MKL Library" OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(IS_MACOS OFF)
 
 if(DEBUG)
         set(CMAKE_CXX_FLAGS "-O0 -pg -Wall -Wextra -g")
@@ -17,11 +18,17 @@ else()
         set(CMAKE_CXX_FLAGS "-Ofast -march=native")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        SET(IS_MACOS ON)
+endif()
+
 if (USE_BLAS_LAPACK)
         add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
-        find_package(BLAS REQUIRED)
-        find_package(LAPACK REQUIRED)
-        find_package(OpenMP REQUIRED)
+        if(NOT IS_MACOS)
+                find_package(BLAS REQUIRED)
+                find_package(LAPACK REQUIRED)
+                find_package(OpenMP REQUIRED)
+        endif()
 endif()
 
 
@@ -42,8 +49,6 @@ add_executable(fem main.cpp
         shaping/primitive_type.h
         particle/stiffness_generator.cpp
         particle/stiffness_generator.h
-        mesh/mesh_reader.cpp
-        mesh/mesh_reader.h
         constants/constant.cpp
         constants/constant.h
         full_cell/full_cell_solver.cpp
@@ -80,6 +85,11 @@ target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
 find_library(HIREDIS_LIB hiredis)
 
-target_link_libraries(fem PRIVATE "libgmsh.so" nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so")
-
+if(NOT IS_MACOS)
+        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so")
+else()
+        include_directories("/opt/homebrew/include")
+        target_link_options(fem PRIVATE -framework Accelerate /opt/homebrew/opt/lapack/lib/liblapacke.dylib)
+        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB})
+endif()
 install(TARGETS fem DESTINATION .)

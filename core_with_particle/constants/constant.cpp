@@ -35,6 +35,7 @@ double constant::delta_u;
 double constant::R = 8.314;
 double constant::T = 298.15;
 double constant::F = 96485.3329;
+double constant::t_ref = 298.15;
 double constant::c_max_an;
 double constant::c_max_ca;
 double constant::c_int_an;

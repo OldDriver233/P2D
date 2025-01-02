@@ -1,7 +1,7 @@
 /core/cmake*
 /core/build
-/.idea
-/.vscode
+.idea
+.vscode
 .clangd
 /web/fem-webui/node_modules
 /web/fem-webui/.vscode
@@ -9,4 +9,5 @@
 /web/fem-backend/dist
 /web/fem-backend/build
 core/.cache
+cmake-*
 # TODO: will separate the web part to a submodule.

@@ -9,11 +9,12 @@ inline double clamp(double x, double lower, double upper) {
     return x < lower ? lower : (x > upper ? upper : x);
 }
 
-void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res, bool is_first_step) {
+void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res,
+                                      bool is_first_step) {
     long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
     long all_size = this->point_coord.size();
-    if(is_first_step) {
+    if (is_first_step) {
         //k.insert(0, 0) = 1;
         //k.insert(2 * point_size, 2 * point_size) = 1;
         //k.insert(2 * point_size + eff_size - 1, 2 * point_size + eff_size - 1) = 1;
@@ -22,21 +23,20 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size + eff_size - 1, 0) = -(uoc<2>(constant::c_int_ca / constant::c_max_ca) - u(2 * point_size + eff_size - 1, 0));
         k.insert(2 * point_size, 2 * point_size) = 1;
         res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
-        } else {
-            k.insert(2 * point_size, 2 * point_size) = 1;
-            res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
+    } else {
+        k.insert(2 * point_size, 2 * point_size) = 1;
+        res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
 
-            double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
-            //double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
+        double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
+        //double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
         //double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
         double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
     }
     res(2 * point_size + 2 * eff_size) += 1 * (297.0 - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
-    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (u(2 * point_size + 2 * eff_size + all_size - 1, 0) - 297.0) * constant::l_ref;
-
-
+    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (
+        u(2 * point_size + 2 * eff_size + all_size - 1, 0) - 297.0) * constant::l_ref;
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
@@ -48,13 +48,14 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     double res_norm = 999999.0;
     double first_norm;
     MatrixXd du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
-    std::vector<Eigen::Triplet<double>> coeff;
+    std::vector<Eigen::Triplet<double> > coeff;
 
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
 
-    while(iter_time < iter && res_norm > tolerance) {
-        Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size, 2 * point_size + 2 * eff_size + all_size);
+    while (iter_time < iter && res_norm > tolerance) {
+        Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size,
+                                      2 * point_size + 2 * eff_size + all_size);
         VectorXd res = VectorXd::Zero(2 * point_size + 2 * eff_size + all_size);
         coeff.clear();
         coeff.reserve(12 * all_size);
@@ -79,7 +80,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 2 * eff_size + all_size);
         printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
-        
+
 
         iter_time++;
     }

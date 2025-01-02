@@ -42,6 +42,7 @@ public:
     static double k_an;
     static double k_ca;
     static double I_app;
+    static double t_ref;
 
     static void read();
 };

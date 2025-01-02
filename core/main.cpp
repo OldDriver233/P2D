@@ -17,11 +17,13 @@ using Eigen::VectorXd;
 
 //using namespace sw::redis;
 
+/*
 void check_mesh() {
     mesh m;
     auto mr = mesh_reader("macro2d.msh");
     mr.read(m);
 }
+*/
 
 std::time_t get_timestamp() {
     auto tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());

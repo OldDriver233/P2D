@@ -16,7 +16,7 @@ public:
     virtual VectorXd eval(const Eigen::Ref<MatrixXd>&) = 0;
     virtual VectorXd eval_deriv(const Eigen::Ref<MatrixXd>&, int) = 0;
     virtual void show() = 0;
-    ~Node() {}
+    virtual ~Node() {}
 };
 
 class FuncNameNode: public Node {
@@ -48,7 +48,7 @@ public:
     LiteralNode(double value) {
         this->value = value;
     }
-    ~LiteralNode() {}
+    ~LiteralNode() = default;
     LiteralNode(const LiteralNode& other) = default;
 
     VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {

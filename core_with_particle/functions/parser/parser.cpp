@@ -135,7 +135,7 @@ Token Parser::consume(TokenType type, const std::string &msg) {
     throw std::runtime_error(msg);
 }
 
-void Parser::parse() { this->initial_node = this->term(); }
+void Parser::parse() { this->initial_node = this->expr(); }
 
 std::unique_ptr<Node> Parser::expr() { return this->term(); }
 

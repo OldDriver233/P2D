@@ -38,15 +38,15 @@ void calc_cell() {
     for(int i = 0; i < pt_size; i++) {
         u(i) = -uoc<1>(constant::c_int_an / constant::c_max_an);
     }
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(int i = pt_size; i < 2 * pt_size; i++) {
         u(i) = 1;
     }
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(int i = 2 * pt_size; i < 2 * pt_size + an - ancoll + 1; i++) {
         u(i) = 0;
     }
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(int i = 2 * pt_size + an - ancoll + 1; i < 2 * pt_size + eff_size; i++) {
         u(i) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(constant::c_int_an / constant::c_max_an);
     }

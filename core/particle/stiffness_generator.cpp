@@ -4,7 +4,7 @@
 #include <eigen3/Eigen/src/Core/Matrix.h>
 #include <iostream>
 #include <cmath>
-#include <omp.h>
+//#include <omp.h>
 
 
 stiffness_generator::stiffness_generator(VectorXd points, Primitive p, double dt, double r) : points(

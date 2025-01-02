@@ -62,6 +62,8 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> arr_d_uoc(simd_size);
     std::vector<double> arr_bv(simd_size);
     std::vector<double> arr_d_bv(simd_size);
+    std::vector<double> arr_kappa(2 * (simd_size - 1));
+    std::vector<double> arr_d_kappa(2 * (simd_size - 1));
     double *arr_eta = new double[simd_size];
     double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
@@ -85,7 +87,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_d_uoc[i] = d_uoc<1>(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
-            arr_du = 0;
+            arr_du[i] = 0;
         }
     } else {
         VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
@@ -100,6 +102,41 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
             arr_du[i] = v_du(i);
+        }
+    }
+    if (!settings::use_customize_kappa) {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
+            VectorXd e_t = u({2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll}, 0);
+            for (int j = 0; j < n; j++) {
+                const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
+
+                MatrixXd t_mat = N.transpose() * e_c;
+                double ele_c_e = t_mat.sum();
+                t_mat = N.transpose() * e_t;
+                double ele_c_t = t_mat.sum();
+
+                double k_eff = kappa(ele_c_e * ce_int) / constant::k_ref * eff_mat;
+                double d_k_eff = d_kappa(ele_c_e * ce_int) * ce_int / constant::k_ref * eff_mat;
+                arr_kappa[i * n + j] = k_eff;
+                arr_d_kappa[i * n + j] = d_k_eff;
+            }
+        }
+    } else {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
+            VectorXd e_t = u({2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll}, 0);
+            MatrixXd vars(2 * (simd_size - 1), 2);
+            for (int j = 0; j < n; j++) {
+                const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
+
+                MatrixXd t_mat = N.transpose() * e_c;
+                double ele_c_e = t_mat.sum();
+                t_mat = N.transpose() * e_t;
+                double ele_c_t = t_mat.sum();
+                vars(i * n + j, 0) = ele_c_e;
+                vars(i * n + j, 1) = ele_c_t;
+            }
         }
     }
 
@@ -133,6 +170,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         res(idx + 2 * dof_cnt + dof_cnt_eff) = rq[src_idx];
     }
 
+    // Total assembly
     for(int i = 0; i < this->surface_an_sep - this->surface_an_coll; i++) {
         MatrixXd e_p = u({i, i + 1}, 0); // phi_e
         MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
@@ -169,14 +207,12 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             MatrixXd N_T = N.transpose();
             MatrixXd dN_T = dN.transpose();
             double det = cached_det_J[(i + surface_an_coll) * n + j];
-            double s = xs(j);
             MatrixXd t_mat = N_T * e_c;
-            // t_mat should be 1x1
-            double lower = t_mat.sum();
+            double ele_c_e = t_mat.sum();
 
             double k_ref = constant::k_ref;
-            double k_eff = kappa(lower * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
-            double d_k_eff = d_kappa(lower * ce_int) * ce_int / k_ref * eff_mat;
+            double k_eff = kappa(ele_c_e * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
+            double d_k_eff = d_kappa(ele_c_e * ce_int) * ce_int / k_ref * eff_mat;
             double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
 
             // s part
@@ -197,12 +233,12 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             // p part
             double eff_4 = a * F * constant::l_ref * constant::l_ref / k_ref;
             e_kpp += k_eff * dNdNT * w(j) * det;
-            e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det 
-                     - kd_eff / lower * dNdNT * w(j) * det
-                     - d_kd_eff / lower * dNdNT * e_c * N_T * w(j) * det
-                     + kd_eff / (lower * lower) * dNdNT * e_c * N_T * w(j) * det;
+            e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det
+                     - kd_eff / ele_c_e * dNdNT * w(j) * det
+                     - d_kd_eff / ele_c_e * dNdNT * e_c * N_T * w(j) * det
+                     + kd_eff / (ele_c_e * ele_c_e) * dNdNT * e_c * N_T * w(j) * det;
             e_kpq += -eff_4 * NNT * w(j) * det * j_ref;
-            e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / lower * dNdNT * e_c * w(j) * det - eff_4 * NNT * e_q * w(j) * det * j_ref;
+            e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / ele_c_e * dNdNT * e_c * w(j) * det - eff_4 * NNT * e_q * w(j) * det * j_ref;
             //e_kpp = MatrixXd::Identity(2, 2);
 
             // t part
@@ -226,15 +262,15 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             double e_qtdu = Ne_q * Ne_t * Ne_du;
             double e_qdu = Ne_q * Ne_du;
             // Heat transfer
-            e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det 
+            e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det
                      + lambda * dNdNT * w(j) * det;
-            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det 
+            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
                     + lambda * dNdNT * e_t * w(j) * det;
             // Q_ohm
-            e_ktt += -(kd_eff / constant::T * NNT * e_dpdc / lower);
-            e_ktp += -(k_eff * NdNT * 2 * dNe_p + kd_eff / constant::T * NdNT * e_tdc / lower);
-            e_ktc += -(kd_eff / constant::T * NdNT * e_tdp / lower);
-            e_rt += -(k_eff * N * e_dp2 + kd_eff / constant::T * N * e_tdpdc / lower) * k_ref * w(j) * det;
+            e_ktt += -(kd_eff / constant::T * NNT * e_dpdc / ele_c_e);
+            e_ktp += -(k_eff * NdNT * 2 * dNe_p + kd_eff / constant::T * NdNT * e_tdc / ele_c_e);
+            e_ktc += -(kd_eff / constant::T * NdNT * e_tdp / ele_c_e);
+            e_rt += -(k_eff * N * e_dp2 + kd_eff / constant::T * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
             e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
             // Q_rxn
             e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
@@ -247,23 +283,23 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         for(int j = 0; j < n; j++) {
             for(int l = 0; l < n; l++) {
                 if(true) {
-                    t.push_back(Eigen::Triplet<double>(i + j, i + l, e_kpp(j, l)));
-                    t.push_back(Eigen::Triplet<double>(i + j, i + l + dof_cnt, e_kpc(j, l)));
-                    t.push_back(Eigen::Triplet<double>(i + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_kpq(j, l)));
+                    t.emplace_back(i + j, i + l, e_kpp(j, l));
+                    t.emplace_back(i + j, i + l + dof_cnt, e_kpc(j, l));
+                    t.emplace_back(i + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_kpq(j, l));
                 }
 
-                t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l)));
-                t.push_back(Eigen::Triplet<double>(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l)));
+                t.emplace_back(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l));
+                t.emplace_back(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l));
 
                 if(i != 0 || j != 0) {
-                    t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt, e_kss(j, l)));
-                    t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l)));
+                    t.emplace_back(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt, e_kss(j, l));
+                    t.emplace_back(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_ksq(j, l));
                 }
 
-                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l)));
-                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l, e_ktp(j, l)));
-                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + dof_cnt, e_ktc(j, l)));
-                t.push_back(Eigen::Triplet<double>(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_ktq(j, l)));
+                t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l));
+                t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l, e_ktp(j, l));
+                t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + dof_cnt, e_ktc(j, l));
+                t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_ktq(j, l));
             }
             res(i + j) += e_rp(j);
             res(i + j + dof_cnt) += e_rc(j);
