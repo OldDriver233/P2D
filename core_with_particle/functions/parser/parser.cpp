@@ -34,6 +34,10 @@ void Parser::tokenize() {
                 throw std::runtime_error(std::format("Unexpected '{}' after '\\'", main[i]));
             }
             if (main[i] == '+') {
+                if (status == TokenType::SCIENTIFIC) {
+                    status = TokenType::LITERAL;
+                    continue;
+                }
                 if (status != TokenType::END) {
                     tokens.emplace_back(main.substr(begin, i - begin), status);
                     status = TokenType::END;
@@ -41,6 +45,10 @@ void Parser::tokenize() {
                 tokens.emplace_back(main.substr(i, 1), TokenType::PLUS);
             }
             if (main[i] == '-') {
+                if (status == TokenType::SCIENTIFIC) {
+                    status = TokenType::LITERAL;
+                    continue;
+                }
                 if (status != TokenType::END) {
                     tokens.emplace_back(main.substr(begin, i - begin), status);
                     status = TokenType::END;
@@ -100,7 +108,10 @@ void Parser::tokenize() {
                     begin = i;
                 }
                 if (status == TokenType::LITERAL) {
-                    throw std::runtime_error(
+                    if (main[i] == 'e' || main[i] == 'E') {
+                        status = TokenType::SCIENTIFIC;
+                    }
+                    else throw std::runtime_error(
                         std::format("Error at {}:{}: Invalid literal value",
                                     line_cnt, char_cnt));
                 }
@@ -247,7 +258,7 @@ std::unique_ptr<Node> Parser::fetch_arg(const Token &func_name) {
 }
 
 std::unique_ptr<Node> Parser::primary() {
-    if (match(TokenType::LITERAL)) {
+    if (match(TokenType::LITERAL) || match(TokenType::SCIENTIFIC)) {
         std::string tmp{this->peek_prev().sv};
         return std::make_unique<LiteralNode>(std::stod(tmp));
     }

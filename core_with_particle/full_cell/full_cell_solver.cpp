@@ -34,9 +34,12 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
     }
-    res(2 * point_size + 2 * eff_size) += 1 * (297.0 - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
-    res(2 * point_size + 2 * eff_size + all_size - 1) += 1 * (
-        u(2 * point_size + 2 * eff_size + all_size - 1, 0) - 297.0) * constant::l_ref;
+    const double t_exchange = 1;
+    k.coeffRef(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size) += t_exchange * constant::l_ref;
+    k.coeffRef(2 * point_size + 2 * eff_size + all_size - 1, 2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * constant::l_ref;
+    res(2 * point_size + 2 * eff_size) -= t_exchange * (constant::t_ref - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
+    res(2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * (
+        u(2 * point_size + 2 * eff_size + all_size - 1, 0) - constant::t_ref) * constant::l_ref;
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
@@ -75,8 +78,8 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         //std::cout<<delta<<std::endl;
         du += delta;
         u += delta;
-        anode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 1);
-        cathode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 2);
+        anode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+        cathode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 2 * eff_size + all_size);
         printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);

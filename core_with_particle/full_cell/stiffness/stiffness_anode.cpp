@@ -113,8 +113,8 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
 
                 MatrixXd t_mat = N.transpose() * e_c;
                 double ele_c_e = t_mat.sum();
-                t_mat = N.transpose() * e_t;
-                double ele_c_t = t_mat.sum();
+                //t_mat = N.transpose() * e_t;
+                //double ele_c_t = t_mat.sum();
 
                 double k_eff = kappa(ele_c_e * ce_int) / constant::k_ref * eff_mat;
                 double d_k_eff = d_kappa(ele_c_e * ce_int) * ce_int / constant::k_ref * eff_mat;
@@ -123,10 +123,10 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     } else {
+        MatrixXd vars(2 * (simd_size - 1), 2);
         for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
             VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
             VectorXd e_t = u({2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll}, 0);
-            MatrixXd vars(2 * (simd_size - 1), 2);
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
 
@@ -134,9 +134,15 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 double ele_c_e = t_mat.sum();
                 t_mat = N.transpose() * e_t;
                 double ele_c_t = t_mat.sum();
-                vars(i * n + j, 0) = ele_c_e;
+                vars(i * n + j, 0) = ele_c_e * ce_int;
                 vars(i * n + j, 1) = ele_c_t;
             }
+        }
+        VectorXd kappa = this->pfm->kappa.initial_node->eval(vars);
+        VectorXd d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
+        for (int i = 0; i < 2 * (simd_size - 1); i++) {
+            arr_kappa[i] = kappa(i) / constant::k_ref * eff_mat;
+            arr_d_kappa[i] = d_kappa(i) * ce_int / constant::k_ref * eff_mat;
         }
     }
 
@@ -209,11 +215,15 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             double det = cached_det_J[(i + surface_an_coll) * n + j];
             MatrixXd t_mat = N_T * e_c;
             double ele_c_e = t_mat.sum();
+            t_mat = N.transpose() * e_t;
+            double ele_c_t = t_mat.sum();
 
             double k_ref = constant::k_ref;
-            double k_eff = kappa(ele_c_e * ce_int) / k_ref * eff_mat, kd_eff = 2 * k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
-            double d_k_eff = d_kappa(ele_c_e * ce_int) * ce_int / k_ref * eff_mat;
-            double d_kd_eff = 2 * d_k_eff * constant::R * constant::T / constant::F * (1 - constant::trans);
+            double k_eff = arr_kappa[i * n + j];
+            double dk_dt = 2 * k_eff * constant::R / constant::F * (1 - constant::trans);
+            double kd_eff = dk_dt * ele_c_t;
+            double d_k_eff = arr_d_kappa[i * n + j];
+            double d_kd_eff = 2 * d_k_eff * constant::R * ele_c_t / constant::F * (1 - constant::trans);
 
             // s part
             double eff_1 = a * F * constant::l_ref * constant::l_ref / sigma_ref;
@@ -267,10 +277,10 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
                     + lambda * dNdNT * e_t * w(j) * det;
             // Q_ohm
-            e_ktt += -(kd_eff / constant::T * NNT * e_dpdc / ele_c_e);
-            e_ktp += -(k_eff * NdNT * 2 * dNe_p + kd_eff / constant::T * NdNT * e_tdc / ele_c_e);
-            e_ktc += -(kd_eff / constant::T * NdNT * e_tdp / ele_c_e);
-            e_rt += -(k_eff * N * e_dp2 + kd_eff / constant::T * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
+            e_ktt += -(dk_dt * NNT * e_dpdc / ele_c_e);
+            e_ktp += -(k_eff * NdNT * 2 * dNe_p + dk_dt * NdNT * e_tdc / ele_c_e);
+            e_ktc += -(dk_dt * NdNT * e_tdp / ele_c_e);
+            e_rt += -(k_eff * N * e_dp2 + dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
             e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
             // Q_rxn
             e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;

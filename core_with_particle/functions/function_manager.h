@@ -10,6 +10,7 @@ public:
     Parser anode_entropy;
     Parser cathode_entropy;
     Parser kappa;
+    Parser electrolyte_diffuse;
 
     FunctionManager() {
         if(settings::use_customize_uoc) {
@@ -21,6 +22,10 @@ public:
             anode_entropy.init(settings::anode_entropy_path);
             cathode_entropy.vector_size = 1;
             cathode_entropy.init(settings::cathode_entropy_path);
+        }
+        if (settings::use_customize_kappa) {
+            kappa.vector_size = 2;
+            kappa.init(settings::kappa_path);
         }
     };
 };

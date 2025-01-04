@@ -9,6 +9,7 @@ enum class TokenType {
     EOL,
     IDENTIFIER,
     LITERAL,
+    SCIENTIFIC,
     LEFT_PAREN,
     RIGHT_PAREN,
     PLUS,

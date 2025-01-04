@@ -15,11 +15,11 @@ using Eigen::MatrixXd;
 class particle_solver {
 public:
     VectorXd point_coord;
-    Eigen::SparseMatrix<double> assembled_A;
+    Eigen::SparseMatrix<double> assembled_A_1;
+    Eigen::SparseMatrix<double> assembled_A_2;
     Eigen::SparseMatrix<double> assembled_B;
-    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
-    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_B;
     MatrixXd last_cs;
+    VectorXd pre_j_coeff;
     VectorXd j_coeff;
     const double D_s;
     const double D_sref;
@@ -31,12 +31,14 @@ public:
         int pt_size = coord.size();
         int elem_size = pt_size - 1;
 
-        assembled_A = Eigen::SparseMatrix<double>(pt_size, pt_size);
+        assembled_A_1 = Eigen::SparseMatrix<double>(pt_size, pt_size);
+        assembled_A_2 = Eigen::SparseMatrix<double>(pt_size, pt_size);
         assembled_B = Eigen::SparseMatrix<double>(pt_size, pt_size);
-        std::vector<Eigen::Triplet<double>> coeff_A;
+        std::vector<Eigen::Triplet<double>> coeff_A_1;
+        std::vector<Eigen::Triplet<double>> coeff_A_2;
         std::vector<Eigen::Triplet<double>> coeff_B;
-        j_coeff = VectorXd::Zero(pt_size);
-        j_coeff(pt_size - 1) = R_s / D_sref * 4 * M_PI * constant::j_ref / c_max;
+        pre_j_coeff = VectorXd::Zero(pt_size);
+        pre_j_coeff(pt_size - 1) = R_s / D_sref * 4 * M_PI * constant::j_ref / c_max;
 
         MatrixXd xs = get_integration_point<dim, n>();
         MatrixXd w = get_integration_weight<dim, n>();
@@ -47,7 +49,8 @@ public:
         for(int i = 0; i < elem_size; i++) {
             MatrixXd coords(1, n);
             coords << coord(i), coord(i + 1);
-            MatrixXd e_a = MatrixXd::Zero(n, n);
+            MatrixXd e_a_1 = MatrixXd::Zero(n, n);
+            MatrixXd e_a_2 = MatrixXd::Zero(n, n);
             MatrixXd e_b = MatrixXd::Zero(n, n);
             for(int j = 0; j < n; j++) {
                 MatrixXd N = get_shape_func_at<dim, n>(xs(j));
@@ -64,27 +67,31 @@ public:
                 double upper = coords(0, 1);
                 double x = lower + (s + 1) * (upper - lower) / 2;
 
-                e_a += N * N_T * x * x * w(j) * det_J * eff_1 + dN * dN_T * x * x * w(j) * det_J * eff_2;
+                e_a_1 += dN * dN_T * x * x * w(j) * det_J * eff_2;
+                e_a_2 += N * N_T * x * x * w(j) * det_J * eff_1;
                 e_b += N * N_T * x * x * w(j) * det_J * eff_1;
             }
 
             for(int j = 0; j < n; j++) {
                 for(int l = 0; l < n; l++) {
-                    coeff_A.emplace_back(i + j, i + l, e_a(j, l));
+                    coeff_A_1.emplace_back(i + j, i + l, e_a_1(j, l));
+                    coeff_A_2.emplace_back(i + j, i + l, e_a_2(j, l));
                     coeff_B.emplace_back(i + j, i + l ,e_b(j, l));
                 }
             }
         }
 
-        assembled_A.setFromTriplets(coeff_A.begin(), coeff_A.end());
+        assembled_A_1.setFromTriplets(coeff_A_1.begin(), coeff_A_1.end());
+        assembled_A_2.setFromTriplets(coeff_A_2.begin(), coeff_A_2.end());
         assembled_B.setFromTriplets(coeff_B.begin(), coeff_B.end());
-        solver_A.compute(assembled_A);
-        solver_B.compute(assembled_B);
-        j_coeff = solver_A.solve(j_coeff);
+
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
+        solver_A.compute(assembled_A_1 + assembled_A_2);
+        j_coeff = solver_A.solve(pre_j_coeff);
     }
 
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
-    void calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type);
+    void calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type, int temp);
 };
 
 #endif //FEM_PARTICLE_SOLVER_H

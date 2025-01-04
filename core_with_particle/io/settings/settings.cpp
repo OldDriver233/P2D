@@ -9,6 +9,7 @@ std::string settings::constant_path = "config.json";
 std::string settings::coord_path = "coord.json";
 bool settings::use_customize_kappa = false;
 bool settings::use_customize_uoc = false;
+bool settings::calc_temperature = true;
 std::string settings::uoc_anode_path = "";
 std::string settings::uoc_cathode_path = "";
 std::string settings::kappa_path = "";
@@ -25,19 +26,8 @@ void settings::read(const std::string& filename) {
     }
 
     json data = json::parse(f);
-    if(data.contains("constant_path")) {
-        settings::constant_path = data["constant_path"];
-    }
-    if(data.contains("coord_path")) {
-        settings::coord_path = data["coord_path"];
-    }
-    if(data.contains("use_customize_kappa")) {
-        settings::use_customize_kappa = data["use_customize_kappa"];
-    }
-    if(data.contains("use_customize_uoc")) {
-        settings::use_customize_uoc = data["use_customize_uoc"];
-    }
-    
+    TRY_READ(use_customize_uoc)
+    TRY_READ(use_customize_kappa)
     TRY_READ(uoc_anode_path)
     TRY_READ(uoc_cathode_path)
     TRY_READ(kappa_path)

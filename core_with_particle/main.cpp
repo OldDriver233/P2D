@@ -32,7 +32,9 @@ void calc_cell() {
     constant::read();
     MatrixXd particle_coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
     auto s = full_cell_solver(an, ca, ancoll, cacoll, coord, particle_coord);
-    MatrixXd u = MatrixXd::Zero(2 * pt_size + 2 * eff_size + all_size, 1);
+    MatrixXd u;
+    if (settings::calc_temperature) u = MatrixXd::Zero(2 * pt_size + 2 * eff_size + all_size, 1);
+    else u = MatrixXd::Zero(2 * pt_size + 2 * eff_size, 1);
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
 
     for(int i = 0; i < pt_size; i++) {
@@ -50,8 +52,10 @@ void calc_cell() {
     for(int i = 2 * pt_size + an - ancoll + 1; i < 2 * pt_size + eff_size; i++) {
         u(i) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(constant::c_int_an / constant::c_max_an);
     }
-    for(int i = 2 * pt_size + 2 * eff_size; i < 2 * pt_size + 2 * eff_size + all_size; i++) {
-        u(i) = 297.0;
+    if (settings::calc_temperature) {
+        for(int i = 2 * pt_size + 2 * eff_size; i < 2 * pt_size + 2 * eff_size + all_size; i++) {
+            u(i) = constant::t_ref;
+        }
     }
     for(int i = 0; i < (an - ancoll + 1) * (constant::particle_segment + 1); i++) {
         c_s(i) = constant::c_int_an / constant::c_max_an;
@@ -70,8 +74,10 @@ void calc_cell() {
         voltage.push_back(u(2 * pt_size + eff_size - 1) - u(2 * pt_size));
     }
     std::cout<<u<<std::endl;
-    for(int i = 0; i < all_size; i++) {
-        std::cout<<u(2 * eff_size + 2 * pt_size + i) - 297<<std::endl;
+    if (settings::calc_temperature) {
+        for(int i = 0; i < all_size; i++) {
+            std::cout<<u(2 * eff_size + 2 * pt_size + i) - constant::t_ref<<std::endl;
+        }
     }
     std::cout<<std::endl;
     for(int i = 0; i < eff_size; i++) {
@@ -101,6 +107,7 @@ void calc_cell() {
     redis.set("last_update_at", std::to_string(get_timestamp()));
 }
 
+/*
 void test_particle() {
     constant::read();
     VectorXd coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
@@ -110,6 +117,7 @@ void test_particle() {
     //std::cout<<p.inv_AB<<std::endl;
     std::cout<<p.j_coeff<<std::endl;
 }
+*/
 
 int main() {
     calc_cell();

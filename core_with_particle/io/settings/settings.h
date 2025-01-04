@@ -4,6 +4,7 @@
 
 class settings {
 public:
+    static bool calc_temperature;
     static std::string constant_path;
     static std::string coord_path;
     static bool use_customize_uoc;
