@@ -47,6 +47,10 @@ double constant::trans;
 double constant::k_an;
 double constant::k_ca;
 double constant::I_app = 30.0;
+double constant::exchange_energy_an;
+double constant::exchange_energy_ca;
+double constant::diffuse_energy_an;
+double constant::diffuse_energy_ca;
 
 
 void constant::read() {

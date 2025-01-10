@@ -34,12 +34,14 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
     }
-    const double t_exchange = 1;
-    k.coeffRef(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size) += t_exchange * constant::l_ref;
-    k.coeffRef(2 * point_size + 2 * eff_size + all_size - 1, 2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * constant::l_ref;
-    res(2 * point_size + 2 * eff_size) -= t_exchange * (constant::t_ref - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
-    res(2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * (
-        u(2 * point_size + 2 * eff_size + all_size - 1, 0) - constant::t_ref) * constant::l_ref;
+    if (settings::calc_temperature) {
+        const double t_exchange = 1;
+        k.coeffRef(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size) += t_exchange * constant::l_ref;
+        k.coeffRef(2 * point_size + 2 * eff_size + all_size - 1, 2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * constant::l_ref;
+        res(2 * point_size + 2 * eff_size) -= t_exchange * (constant::t_ref - u(2 * point_size + 2 * eff_size, 0)) * constant::l_ref;
+        res(2 * point_size + 2 * eff_size + all_size - 1) += t_exchange * (
+            u(2 * point_size + 2 * eff_size + all_size - 1, 0) - constant::t_ref) * constant::l_ref;
+    }
 }
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
@@ -50,7 +52,9 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     int iter_time = 0;
     double res_norm = 999999.0;
     double first_norm;
-    MatrixXd du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
+    MatrixXd du;
+    if (settings::calc_temperature) du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
+    else du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
     std::vector<Eigen::Triplet<double> > coeff;
 
     anode_particle.pre_calc(c_s);
@@ -59,15 +63,24 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     while (iter_time < iter && res_norm > tolerance) {
         Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size,
                                       2 * point_size + 2 * eff_size + all_size);
-        VectorXd res = VectorXd::Zero(2 * point_size + 2 * eff_size + all_size);
+        if (!settings::calc_temperature) k.resize(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size);
+        VectorXd res;
+        if (settings::calc_temperature) res = VectorXd::Zero(2 * point_size + 2 * eff_size + all_size);
+        else res = VectorXd::Zero(2 * point_size + 2 * eff_size);
         coeff.clear();
-        coeff.reserve(12 * all_size);
+        coeff.reserve(16 * 5 * all_size);
 
-        this->anode.generate(u, du, c_s, coeff, res, step == 0);
-        this->sep.generate(u, du, c_s, coeff, res, step == 0);
-        this->cathode.generate(u, du, c_s, coeff, res, step == 0);
-        this->anode_collector.generate(u, du, c_s, coeff, res, step == 0);
-        this->cathode_collector.generate(u, du, c_s, coeff, res, step == 0);
+        if (settings::calc_temperature) {
+            this->anode.generate<true>(u, du, c_s, coeff, res, step == 0);
+            this->sep.generate<true>(u, du, c_s, coeff, res, step == 0);
+            this->cathode.generate<true>(u, du, c_s, coeff, res, step == 0);
+            this->anode_collector.generate(u, du, c_s, coeff, res, step == 0);
+            this->cathode_collector.generate(u, du, c_s, coeff, res, step == 0);
+        } else {
+            this->anode.generate<false>(u, du, c_s, coeff, res, step == 0);
+            this->sep.generate<false>(u, du, c_s, coeff, res, step == 0);
+            this->cathode.generate<false>(u, du, c_s, coeff, res, step == 0);
+        }
         k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res, step == 0);
 
@@ -78,10 +91,15 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         //std::cout<<delta<<std::endl;
         du += delta;
         u += delta;
-        anode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-        cathode_particle.calc(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+        if (settings::calc_temperature) {
+            anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+            cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+        } else {
+            anode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+            cathode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+        }
         double norm = delta.norm();
-        res_norm = res.norm() / (2 * point_size + 2 * eff_size + all_size);
+        res_norm = res.norm() / (2 * point_size + 2 * eff_size);
         printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
 
 

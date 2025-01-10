@@ -43,6 +43,10 @@ public:
     static double k_ca;
     static double I_app;
     static double t_ref;
+    static double exchange_energy_an;
+    static double exchange_energy_ca;
+    static double diffuse_energy_an;
+    static double diffuse_energy_ca;
 
     static void read();
 };

@@ -33,4 +33,5 @@ void settings::read(const std::string& filename) {
     TRY_READ(kappa_path)
     TRY_READ(anode_entropy_path)
     TRY_READ(cathode_entropy_path)
+    TRY_READ(calc_temperature)
 }

@@ -3,6 +3,7 @@
 #include "../../constants/constant.h"
 #include "stiffness_base.h"
 #include <eigen3/Eigen/Dense>
+#include <utility>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -12,13 +13,13 @@ public:
   stiffness_anode_collector() {}
   stiffness_anode_collector(VectorXd points, int an, int ca, int ancoll,
                             int cacoll)
-      : stiffness_base(points, an, ca, ancoll, cacoll) {}
+      : stiffness_base(std::move(points), an, ca, ancoll, cacoll) {}
   ~stiffness_anode_collector() {}
 
   void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                 const Eigen::Ref<MatrixXd> &,
                 std::vector<Eigen::Triplet<double>> &, Eigen::Ref<VectorXd>,
-                bool) override;
+                bool);
 };
 
 #endif

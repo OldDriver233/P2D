@@ -1,10 +1,10 @@
 #include "stiffness_anode_collector.h"
 
-void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u, 
+void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u,
                                const Eigen::Ref<MatrixXd> &du,
                                const Eigen::Ref<MatrixXd> &c_s,
-                               std::vector<Eigen::Triplet<double>> &t, 
-                               Eigen::Ref<VectorXd> res, 
+                               std::vector<Eigen::Triplet<double>> &t,
+                               Eigen::Ref<VectorXd> res,
                                bool is_first_step) {
     const double I_app = constant::I_app;
     const int dim = 1, n = 2;

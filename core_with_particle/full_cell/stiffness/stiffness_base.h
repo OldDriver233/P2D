@@ -53,12 +53,6 @@ public:
       }
     }
   }
-
-  virtual void generate(const Eigen::Ref<MatrixXd> &,
-                        const Eigen::Ref<MatrixXd> &,
-                        const Eigen::Ref<MatrixXd> &,
-                        std::vector<Eigen::Triplet<double>> &,
-                        Eigen::Ref<VectorXd>, bool) = 0;
 };
 
 #endif // FEM_STIFFNESS_BASE_H

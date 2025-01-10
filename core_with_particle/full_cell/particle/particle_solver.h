@@ -18,6 +18,7 @@ public:
     Eigen::SparseMatrix<double> assembled_A_1;
     Eigen::SparseMatrix<double> assembled_A_2;
     Eigen::SparseMatrix<double> assembled_B;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> constant_solver;
     MatrixXd last_cs;
     VectorXd pre_j_coeff;
     VectorXd j_coeff;
@@ -85,12 +86,12 @@ public:
         assembled_A_2.setFromTriplets(coeff_A_2.begin(), coeff_A_2.end());
         assembled_B.setFromTriplets(coeff_B.begin(), coeff_B.end());
 
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
-        solver_A.compute(assembled_A_1 + assembled_A_2);
-        j_coeff = solver_A.solve(pre_j_coeff);
+        constant_solver.compute(assembled_A_1 + assembled_A_2);
+        j_coeff = constant_solver.solve(pre_j_coeff);
     }
 
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
+    template <bool constant_matrix>
     void calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type, int temp);
 };
 
