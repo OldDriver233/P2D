@@ -32,7 +32,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
         double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
         //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
-        res(2 * point_size + eff_size - 1, 0) += 30 * constant::l_ref / sigma_ref_ca;
+        res(2 * point_size + eff_size - 1, 0) += constant::I_app * constant::l_ref / sigma_ref_ca;
     }
     if (settings::calc_temperature) {
         const double t_exchange = 1;

@@ -11,7 +11,7 @@ void particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> 
     if(type == 1) {
         for(int i = 0; i <= an; i++) {
             if constexpr (!constant_matrix) {
-                double coeff = exp(5000 / constant::R * (1 / u(temp + i, 0) - 1 / constant::t_ref));
+                double coeff = exp(constant::diffuse_energy_an / constant::R * (1 / u(temp + i, 0) - 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                 solver_A.compute(assembled_A_1 * coeff + assembled_A_2);
                 j_coeff = solver_A.solve(pre_j_coeff);
@@ -27,7 +27,7 @@ void particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> 
     } else {
         for(int i = ca; i < pt_size; i++) {
             if constexpr (!constant_matrix) {
-                double coeff = exp(5000 / constant::R * (1 / u(temp + i, 0) - 1 / constant::t_ref));
+                double coeff = exp(constant::diffuse_energy_ca / constant::R * (1 / u(temp + i, 0) - 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                 solver_A.compute(assembled_A_1 * coeff + assembled_A_2);
                 j_coeff = solver_A.solve(pre_j_coeff);

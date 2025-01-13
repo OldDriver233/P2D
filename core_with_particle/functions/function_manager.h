@@ -27,6 +27,10 @@ public:
             kappa.vector_size = 2;
             kappa.init(settings::kappa_path);
         }
+        if (settings::use_customize_diffuse) {
+            electrolyte_diffuse.vector_size = 2;
+            electrolyte_diffuse.init(settings::diffuse_path);
+        }
     };
 };
 

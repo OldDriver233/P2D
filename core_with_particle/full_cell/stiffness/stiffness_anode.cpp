@@ -29,7 +29,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     const double eff_mat = std::pow(constant::epsilon_e_an, constant::bruggeman);
     const double eff_mat_s = std::pow(constant::epsilon_s_an, constant::bruggeman);
     const double d_ref = constant::de_an;
-    const double d_eff = constant::de_an / d_ref * eff_mat;
+    //const double d_eff = constant::de_an / d_ref * eff_mat;
     const double ds_eff = constant::ds_an / d_ref;
     const double sigma_ref = constant::sigma_an * eff_mat_s;
     const double sigma_eff = constant::sigma_an / sigma_ref * eff_mat_s;
@@ -40,7 +40,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     const double j_ref = constant::j_ref;
     const double F = constant::F;
     const double ce_root = std::sqrt(ce_int);
-    const double rho = 2500, cap = 700, lambda = 1.7;
+    const double rho = constant::density_an, cap = constant::capacity_an, lambda = constant::lambda_an;
 
     // Here we take out the evaluation of the functions for vectorization purpose.
     // TODO: Extract the code below to one method
@@ -63,6 +63,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> arr_d_bv(simd_size);
     std::vector<double> arr_kappa(2 * (simd_size - 1));
     std::vector<double> arr_d_kappa(2 * (simd_size - 1));
+    std::vector<double> arr_d_eff(2 * (simd_size - 1));
     double *arr_eta = new double[simd_size];
     double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
@@ -86,7 +87,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_d_uoc[i] = d_uoc<1>(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
-            arr_du[i] = 0;
+            arr_du[i] = arr_d_uoc[i] / c_max;
         }
     } else {
         VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
@@ -103,7 +104,27 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_du[i] = v_du(i);
         }
     }
-    if (!settings::use_customize_kappa) {
+
+    MatrixXd vars(2 * (simd_size - 1), 2);
+    if constexpr (use_temp) {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
+            VectorXd e_t = u({
+                                 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll,
+                                 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll
+                             }, 0);
+            for (int j = 0; j < n; j++) {
+                const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
+
+                MatrixXd t_mat = N.transpose() * e_c;
+                double ele_c_e = t_mat.sum();
+                t_mat = N.transpose() * e_t;
+                double ele_c_t = t_mat.sum();
+                vars(i * n + j, 0) = ele_c_e * ce_int;
+                vars(i * n + j, 1) = ele_c_t;
+            }
+        }
+    } else {
         for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
             VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
             for (int j = 0; j < n; j++) {
@@ -111,56 +132,40 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
 
                 MatrixXd t_mat = N.transpose() * e_c;
                 double ele_c_e = t_mat.sum();
-
-                double k_eff = kappa(ele_c_e * ce_int) / constant::k_ref * eff_mat;
-                double d_k_eff = d_kappa(ele_c_e * ce_int) * ce_int / constant::k_ref * eff_mat;
+                vars(i * n + j, 0) = ele_c_e * ce_int;
+                vars(i * n + j, 1) = constant::T;
+            }
+        }
+    }
+    if (!settings::use_customize_kappa) {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            for (int j = 0; j < n; j++) {
+                double k_eff = kappa(vars(i * n + j, 0)) / constant::k_ref * eff_mat;
+                double d_k_eff = d_kappa(vars(i * n + j, 0)) * ce_int / constant::k_ref * eff_mat;
                 arr_kappa[i * n + j] = k_eff;
                 arr_d_kappa[i * n + j] = d_k_eff;
             }
         }
     } else {
-        VectorXd kappa;
-        VectorXd d_kappa;
-        if constexpr (use_temp) {
-            MatrixXd vars(2 * (simd_size - 1), 2);
-            for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
-                VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
-                VectorXd e_t = u({
-                                     2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll,
-                                     2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll
-                                 }, 0);
-                for (int j = 0; j < n; j++) {
-                    const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
-
-                    MatrixXd t_mat = N.transpose() * e_c;
-                    double ele_c_e = t_mat.sum();
-                    t_mat = N.transpose() * e_t;
-                    double ele_c_t = t_mat.sum();
-                    vars(i * n + j, 0) = ele_c_e * ce_int;
-                    vars(i * n + j, 1) = ele_c_t;
-                }
-            }
-            kappa = this->pfm->kappa.initial_node->eval(vars);
-            d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
-        } else {
-            MatrixXd vars(2 * (simd_size - 1), 2);
-            for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
-                VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
-                for (int j = 0; j < n; j++) {
-                    const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
-
-                    MatrixXd t_mat = N.transpose() * e_c;
-                    double ele_c_e = t_mat.sum();
-                    vars(i * n + j, 0) = ele_c_e * ce_int;
-                    vars(i * n + j, 1) = constant::T;
-                }
-            }
-            kappa = this->pfm->kappa.initial_node->eval(vars);
-            d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
-        }
+        VectorXd kappa = this->pfm->kappa.initial_node->eval(vars);
+        VectorXd d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
         for (int i = 0; i < 2 * (simd_size - 1); i++) {
             arr_kappa[i] = kappa(i) / constant::k_ref * eff_mat;
             arr_d_kappa[i] = d_kappa(i) * ce_int / constant::k_ref * eff_mat;
+        }
+    }
+    if (!settings::use_customize_diffuse) {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            for (int j = 0; j < n; j++) {
+                arr_d_eff[i * n + j] = constant::de_an / d_ref * eff_mat;
+            }
+        }
+    } else {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
+            for (int j = 0; j < n; j++) {
+                arr_d_eff[i * n + j] = d_l(i * n + j) / d_ref * eff_mat;
+            }
         }
     }
 
@@ -254,6 +259,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             double kd_eff = dk_dt * ele_c_t;
             double d_k_eff = arr_d_kappa[i * n + j];
             double d_kd_eff = 2 * d_k_eff * constant::R * ele_c_t / constant::F * (1 - constant::trans);
+            double d_eff = arr_d_eff[i * n + j];
 
             // s part
             double eff_1 = a * F * constant::l_ref * constant::l_ref / sigma_ref;

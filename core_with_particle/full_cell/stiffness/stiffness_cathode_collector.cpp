@@ -8,7 +8,7 @@ void stiffness_cathode_collector::generate(const Eigen::Ref<MatrixXd> &u,
                                bool is_first_step) {
     const double I_app = constant::I_app;
     const int dim = 1, n = 2;
-    const double rho = 2700, cap = 897, lambda = 237, sigma = 3.55e7;
+    const double rho = constant::density_ca_collector, cap = constant::capacity_ca_collector, lambda = constant::lambda_ca_collector, sigma = constant::sigma_ca_collector;
     int dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
     int dof_cnt_temp = this->points.size();

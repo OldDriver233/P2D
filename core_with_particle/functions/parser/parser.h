@@ -24,12 +24,12 @@ public:
     Parser() = default;
     ~Parser() = default;
 
-    Parser(std::string filename, std::size_t vector_size): vector_size(vector_size) {
+    Parser(const std::string& filename, std::size_t vector_size): vector_size(vector_size) {
         init(filename);
     }
 
     
-    void init(std::string filename) {
+    void init(const std::string& filename) {
         std::ifstream f(filename);
         std::stringstream ss;
         std::string line;

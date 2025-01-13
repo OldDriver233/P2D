@@ -8,7 +8,7 @@ void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u,
                                bool is_first_step) {
     const double I_app = constant::I_app;
     const int dim = 1, n = 2;
-    const double rho = 8940, cap = 385, lambda = 401, sigma = 5.96e6;
+    const double rho = constant::density_an_collector, cap = constant::capacity_an_collector, lambda = constant::lambda_an_collector, sigma = constant::sigma_an_collector;
     int dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
     int dof_cnt_eff = dof_cnt - (this->surface_ca_sep - this->surface_an_sep - 1);
     int dof_cnt_temp = this->points.size();

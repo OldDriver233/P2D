@@ -16,6 +16,8 @@ public:
     static double sigma_an;
     static double sigma_ca;
     static double sigma_sep;
+    static double sigma_an_collector;
+    static double sigma_ca_collector;
     static double de_an;
     static double de_ca;
     static double de_sep;
@@ -47,6 +49,21 @@ public:
     static double exchange_energy_ca;
     static double diffuse_energy_an;
     static double diffuse_energy_ca;
+    static double capacity_an_collector;
+    static double capacity_an;
+    static double capacity_sep;
+    static double capacity_ca;
+    static double capacity_ca_collector;
+    static double density_an_collector;
+    static double density_an;
+    static double density_sep;
+    static double density_ca;
+    static double density_ca_collector;
+    static double lambda_an_collector;
+    static double lambda_an;
+    static double lambda_sep;
+    static double lambda_ca;
+    static double lambda_ca_collector;
 
     static void read();
 };
