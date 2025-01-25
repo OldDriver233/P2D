@@ -65,6 +65,8 @@ add_executable(fem main.cpp
         io/redis_connector.h
         io/redis_connector.cpp
         io/settings/settings.cpp
+        io/output/output_manager.h
+        io/output/output_manager.cpp
 )
 
 if (USE_MKL)

@@ -13,7 +13,8 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                                const Eigen::Ref<MatrixXd> &c_s,
                                std::vector<Eigen::Triplet<double> > &t,
                                Eigen::Ref<VectorXd> res,
-                               bool is_first_step) {
+                               bool is_first_step,
+                               std::vector<double>& temp) {
     const int dim = 1, n = 2;
     //int dof_cnt = this->points.size();
     int dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
@@ -30,7 +31,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     const double eff_mat_s = std::pow(constant::epsilon_s_an, constant::bruggeman);
     const double d_ref = constant::de_an;
     //const double d_eff = constant::de_an / d_ref * eff_mat;
-    const double ds_eff = constant::ds_an / d_ref;
+    //const double ds_eff = constant::ds_an / d_ref;
     const double sigma_ref = constant::sigma_an * eff_mat_s;
     const double sigma_eff = constant::sigma_an / sigma_ref * eff_mat_s;
     const double epsilon = constant::epsilon_e_an;
@@ -64,6 +65,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> arr_kappa(2 * (simd_size - 1));
     std::vector<double> arr_d_kappa(2 * (simd_size - 1));
     std::vector<double> arr_d_eff(2 * (simd_size - 1));
+    std::vector<double> ktt(simd_size);
+    std::vector<double> ktq(simd_size);
+    std::vector<double> rt(simd_size);
     double *arr_eta = new double[simd_size];
     double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
@@ -102,6 +106,19 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_bv[i] = bv(arr_eta[i]);
             arr_d_bv[i] = d_bv(arr_eta[i]);
             arr_du[i] = v_du(i);
+        }
+    }
+    if constexpr (use_temp) {
+        for (int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
+            const int idx = i;
+            double q = u_ptr[2 * dof_cnt + dof_cnt_eff + i];
+            double t = u_ptr[2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll];
+            double arr_q_rxn_b = constant::F * a * arr_eta[i] * constant::l_ref * constant::l_ref * j_ref;
+            double arr_q_rev_b = constant::F * a * arr_du[i] * constant::l_ref * constant::l_ref * j_ref;
+            //rt[i] += -arr_q_rev_b * q * t - arr_q_rxn_b * q;
+            //ktt[i] += -arr_q_rev_b * q;
+            //ktq[i] += -arr_q_rev_b * t;
+            //ktq[i] += -arr_q_rxn_b;
         }
     }
 
@@ -168,6 +185,27 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     }
+    /*
+    if (use_temp) {
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            MatrixXd e_p = u({i, i + 1}, 0); // phi_e
+            MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
+            MatrixXd e_s = u({2 * dof_cnt + i, 2 * dof_cnt + i + 1}, 0); // phi_s
+            MatrixXd e_t = u({
+                                 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll,
+                                 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll
+                             }, 0);
+            double length = (points(i + this->surface_an_coll + 1, 0) - points(i + this->surface_an_coll, 0)) * constant::l_ref;
+            double kappa_eff = arr_kappa[i];
+            double sigma = sigma_eff * sigma_ref;
+            double q_ohm = sigma * pow((e_s(1,0) - e_s(0,0)) / length, 2);
+            double q_ohm2 = kappa_eff * pow((e_p(1,0)-e_p(0,0)) / length, 2);
+            double q_ohm3 = 2 * kappa_eff * constant::R * (e_t(0,0)+e_t(1,0)) / 2 / constant::F * (1 - constant::trans)
+                         * ((log(e_c(1,0) * ce_int) - log(e_c(0,0) * ce_int)) / length) * ((e_p(1,0) - e_p(0,0)) / length);
+            std::cout<<q_ohm<<" "<<q_ohm2<<" "<<q_ohm3<<std::endl;
+        }
+    }
+    */
 
     for (int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
         const int idx = i;
@@ -197,6 +235,11 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         t.emplace_back(2 * dof_cnt + dof_cnt_eff + idx, idx + 2 * dof_cnt + dof_cnt_eff, kqq[src_idx]);
 
         res(idx + 2 * dof_cnt + dof_cnt_eff) = rq[src_idx];
+        if constexpr (use_temp) {
+            t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, ktt[src_idx]);
+            t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll, 2 * dof_cnt + dof_cnt_eff, ktq[src_idx]);
+            res(idx + 2 * dof_cnt + 2 * dof_cnt_eff) = rt[src_idx];
+        }
     }
 
     // Total assembly
@@ -273,8 +316,12 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             double eff_3 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
             e_kcc += epsilon * eff_3 * NNT * w(j) * det + d_eff * dNdNT * w(j) * det;
             e_kcq += -eff_2 * NNT * w(j) * det * j_ref / ce_int;
-            e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det - eff_2 * NNT * e_q *
-                    w(j) * det * j_ref / ce_int;
+            if (!is_first_step) {
+                e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det - eff_2 * NNT * e_q *
+                        w(j) * det * j_ref / ce_int;
+            } else {
+                e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det;
+            }
             //e_kcc = MatrixXd::Identity(2, 2);
 
             // p part
@@ -306,6 +353,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 double e_dpdc = dNe_p * dNe_c;
                 double e_tdc = Ne_t * dNe_c;
                 double e_tdp = Ne_t * dNe_p;
+                double e_tdu = Ne_t * Ne_du;
                 double e_qt = Ne_q * Ne_t;
                 double e_qeta = Ne_q * Ne_eta;
                 double e_qtdu = Ne_q * Ne_t * Ne_du;
@@ -316,30 +364,38 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
                         + lambda * dNdNT * e_t * w(j) * det;
                 // Q_ohm
-                e_ktt += -(dk_dt * NNT * e_dpdc / ele_c_e);
-                e_ktp += -(k_eff * NdNT * 2 * dNe_p + dk_dt * NdNT * e_tdc / ele_c_e);
-                e_ktc += -(dk_dt * NdNT * e_tdp / ele_c_e);
-                e_rt += -(k_eff * N * e_dp2 + dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
-                e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
-                // Q_rxn
-                e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                // Q_rev
-                e_ktt += -(constant::F * a * NNT * e_qdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                e_rt += -(constant::F * a * N * e_qtdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                if (!is_first_step) {
+                    //e_ktt += (dk_dt * NNT * e_dpdc / ele_c_e);
+                    //e_ktp += -(k_eff * NdNT * 2 * dNe_p - dk_dt * NdNT * e_tdc / ele_c_e);
+                    //e_ktc += (dk_dt * NdNT * e_tdp / ele_c_e);
+                    e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
+                    e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
+                    // Q_rxn
+                    //e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    // Q_rev
+                    //e_ktt += -(constant::F * a * NNT * e_qdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    //e_ktq += -(constant::F * a * NNT * e_tdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    e_rt += -(constant::F * a * N * e_qtdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                }
+                if (j == 0) {
+                    temp.push_back(((k_eff * e_dp2 - dk_dt * e_tdpdc / ele_c_e) * k_ref + (sigma_eff * e_ds2) * sigma_ref) / (constant::l_ref * constant::l_ref));
+                    temp.push_back((constant::F * a * e_qeta) * j_ref);
+                    temp.push_back((constant::F * a * e_qtdu) * j_ref);
+                }
             }
         }
 
         for (int j = 0; j < n; j++) {
             for (int l = 0; l < n; l++) {
-                if (true) {
+                if (i != 0 || j != 0 || true) {
                     t.emplace_back(i + j, i + l, e_kpp(j, l));
                     t.emplace_back(i + j, i + l + dof_cnt, e_kpc(j, l));
                     t.emplace_back(i + j, i + l + 2 * dof_cnt + dof_cnt_eff, e_kpq(j, l));
                 }
 
                 t.emplace_back(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l));
-                t.emplace_back(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l));
+                if (!is_first_step) t.emplace_back(i + j + dof_cnt, i + l + 2 * dof_cnt + dof_cnt_eff, e_kcq(j, l));
 
                 if (i != 0 || j != 0) {
                     t.emplace_back(i + j + 2 * dof_cnt, i + l + 2 * dof_cnt, e_kss(j, l));
@@ -375,9 +431,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
 template void stiffness_anode::generate<true>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                                               const Eigen::Ref<MatrixXd> &,
                                               std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
-                                              bool);
+                                              bool, std::vector<double> &);
 
 template void stiffness_anode::generate<false>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                                                const Eigen::Ref<MatrixXd> &,
                                                std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
-                                               bool);
+                                               bool, std::vector<double> &);

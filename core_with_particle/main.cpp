@@ -11,6 +11,8 @@
 #include <vector>
 #include <chrono>
 
+#include "io/output/output_manager.h"
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -32,7 +34,7 @@ void calc_cell() {
     constant::read();
     MatrixXd particle_coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
     auto s = full_cell_solver(an, ca, ancoll, cacoll, coord, particle_coord);
-    MatrixXd u;
+    VectorXd u;
     if (settings::calc_temperature) u = MatrixXd::Zero(2 * pt_size + 2 * eff_size + all_size, 1);
     else u = MatrixXd::Zero(2 * pt_size + 2 * eff_size, 1);
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
@@ -67,12 +69,40 @@ void calc_cell() {
     std::vector<double> delta_u;
     std::vector<double> c_star;
     std::vector<double> voltage;
+    std::vector<double> temperature;
+    output_manager phi_l(coord(Eigen::seq(ancoll, cacoll)));
+    output_manager c_l(coord(Eigen::seq(ancoll, cacoll)));
+    output_manager phi_s_negative(coord(Eigen::seq(ancoll, an)));
+    output_manager phi_s_positive(coord(Eigen::seq(ca, cacoll)));
+    output_manager temp(MatrixXd::Zero(1, 1));
     for(int i = 0; i <= constant::step; i++) {
         s.calc(u, c_s);
         //std::cout<<"Step: "<<i<<std::endl;
         delta_u.push_back(u(pt_size - 1) - u(0));
         voltage.push_back(u(2 * pt_size + eff_size - 1) - u(2 * pt_size));
+        if (settings::calc_temperature)
+            temperature.push_back((u(2 * pt_size + 2 * eff_size) + u(2 * pt_size + 2 * all_size - 1)) / 2);
+        if (static_cast<int>(i * constant::dt) % 36 == 0) {
+            phi_l.append(u(Eigen::seq(0, pt_size - 1)), constant::dt * i);
+            c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), constant::dt * i);
+            phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), constant::dt * i);
+            phi_s_positive.append(u(Eigen::seq(2 * pt_size + (an - ancoll) + 1, 2 * pt_size + eff_size - 1)), constant::dt * i);
+            if (settings::calc_temperature)
+                temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), constant::dt * i);
+        }
+
     }
+    phi_l.write_to_csv("output/phi_l.csv");
+    c_l.write_to_csv("output/c_l.csv");
+    phi_s_negative.write_to_csv("output/phi_neg.csv");
+    phi_s_positive.write_to_csv("output/phi_pos.csv");
+    temp.write_to_csv("output/temp.csv");
+    s.Q_ohm.write_to_csv("output/q_ohm.csv");
+    s.Q_rxn.write_to_csv("output/q_rxn.csv");
+    s.Q_rev.write_to_csv("output/q_rev.csv");
+
+
+    /*
     std::cout<<u<<std::endl;
     if (settings::calc_temperature) {
         for(int i = 0; i < all_size; i++) {
@@ -85,13 +115,17 @@ void calc_cell() {
     }
     std::cout<<std::endl;
     std::cout<<c_s.block(0, 0, constant::particle_segment + 1, 1)<<std::endl;
+    */
 
+    /*
     std::cout<<"Writing to redis"<<std::endl;
     auto redis = redis_connector();
     redis.del("voltage");
     redis.del("delta_u");
     redis.del("u");
     redis.del("c_star");
+    redis.del("temp");
+    redis.del("phi_e");
     for(int i = 0; i < voltage.size(); i++) {
         redis.rpush("voltage", std::to_string(voltage[i]));
     }
@@ -104,7 +138,16 @@ void calc_cell() {
     for(int i = 0; i < pt_size; i++) {
         redis.rpush("u", std::to_string(u(i + pt_size) * constant::ce_int));
     }
+    for (int i = 0; i < pt_size; i++) {
+        redis.rpush("phi_e", std::to_string(u(i)));
+    }
+    if (settings::calc_temperature) {
+        for(int i = 0; i < temperature.size(); i++) {
+            redis.rpush("temp", std::to_string(temperature[i]));
+        }
+    }
     redis.set("last_update_at", std::to_string(get_timestamp()));
+    */
 }
 
 /*

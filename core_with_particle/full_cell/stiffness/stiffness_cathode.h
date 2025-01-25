@@ -28,7 +28,7 @@ public:
     void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
-                  bool);
+                  bool, std::vector<double>&);
 };
 
 #endif // FEM_STIFFNESS_CATHODE_H

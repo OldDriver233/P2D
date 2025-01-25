@@ -23,15 +23,29 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         //res(2 * point_size + eff_size - 1, 0) = -(uoc<2>(constant::c_int_ca / constant::c_max_ca) - u(2 * point_size + eff_size - 1, 0));
         k.insert(2 * point_size, 2 * point_size) = 1;
         res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
+        double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
+        double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
+        double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
+        double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
+        //res(2 * point_size + (an - ancoll), 0) -= constant::I_app * constant::l_ref / sigma_ref_an;
+        //res(2 * point_size + (an - ancoll) + 1, 0) += constant::I_app * constant::l_ref / sigma_ref_ca;
+        res(2 * point_size, 0) -= constant::I_app * constant::l_ref / sigma_ref_an;
+        res(2 * point_size + eff_size - 1, 0) += constant::I_app * constant::l_ref / sigma_ref_ca;
+        //k.insert(0, 0) = 1;
+        //res(0, 0) -= (0 - u(0, 0));
     } else {
         k.insert(2 * point_size, 2 * point_size) = 1;
         res(2 * point_size, 0) = -(0 - u(2 * point_size, 0));
+        //k.insert(0, 0) = 1;
+        //res(0, 0) -= (0 - u(0, 0));
 
         double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
-        //double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
-        //double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
+        double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
+        double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
         double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
-        //res(2 * point_size, 0) -= 30 * constant::l_ref / sigma_ref_an;
+        //res(2 * point_size + (an - ancoll), 0) -= constant::I_app * constant::l_ref / sigma_ref_an;
+        //res(2 * point_size + (an - ancoll) + 1, 0) += constant::I_app * constant::l_ref / sigma_ref_ca;
+        res(2 * point_size, 0) -= constant::I_app * constant::l_ref / sigma_ref_an;
         res(2 * point_size + eff_size - 1, 0) += constant::I_app * constant::l_ref / sigma_ref_ca;
     }
     if (settings::calc_temperature) {
@@ -56,6 +70,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     if (settings::calc_temperature) du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
     else du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
     std::vector<Eigen::Triplet<double> > coeff;
+    std::vector<double> temp;
 
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
@@ -69,20 +84,22 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         else res = VectorXd::Zero(2 * point_size + 2 * eff_size);
         coeff.clear();
         coeff.reserve(16 * 5 * all_size);
+        temp.clear();
+        temp.reserve(3 * point_size);
 
         if (settings::calc_temperature) {
-            this->anode.generate<true>(u, du, c_s, coeff, res, step == 0);
-            this->sep.generate<true>(u, du, c_s, coeff, res, step == 0);
-            this->cathode.generate<true>(u, du, c_s, coeff, res, step == 0);
+            this->anode.generate<true>(u, du, c_s, coeff, res, step == 0, temp);
+            this->sep.generate<true>(u, du, c_s, coeff, res, step == 0, temp);
+            this->cathode.generate<true>(u, du, c_s, coeff, res, step == 0, temp);
             this->anode_collector.generate(u, du, c_s, coeff, res, step == 0);
             this->cathode_collector.generate(u, du, c_s, coeff, res, step == 0);
         } else {
-            this->anode.generate<false>(u, du, c_s, coeff, res, step == 0);
-            this->sep.generate<false>(u, du, c_s, coeff, res, step == 0);
-            this->cathode.generate<false>(u, du, c_s, coeff, res, step == 0);
+            this->anode.generate<false>(u, du, c_s, coeff, res, step == 0, temp);
+            this->sep.generate<false>(u, du, c_s, coeff, res, step == 0, temp);
+            this->cathode.generate<false>(u, du, c_s, coeff, res, step == 0, temp);
         }
         k.setFromTriplets(coeff.begin(), coeff.end());
-        apply_boundary(u, k, res, step == 0);
+        apply_boundary(u, k, res, false);
 
         solver.compute(k);
         //std::cout<<k<<std::endl;
@@ -91,12 +108,14 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         //std::cout<<delta<<std::endl;
         du += delta;
         u += delta;
-        if (settings::calc_temperature) {
-            anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-            cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
-        } else {
-            anode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-            cathode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+        if (step != 0) {
+            if (settings::calc_temperature) {
+                anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+                cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+            } else {
+                anode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+                cathode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+            }
         }
         double norm = delta.norm();
         res_norm = res.norm() / (2 * point_size + 2 * eff_size);
@@ -104,6 +123,19 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
 
 
         iter_time++;
+    }
+    if (step % 36 == 0) {
+        VectorXd q_ohm = VectorXd::Zero(element_coord.size());
+        VectorXd q_rxn = VectorXd::Zero(element_coord.size());
+        VectorXd q_rev = VectorXd::Zero(element_coord.size());
+        for (int i = 0; i < temp.size(); i++) {
+            if (i % 3 == 0) q_ohm(i / 3) = temp[i];
+            if (i % 3 == 1) q_rxn(i / 3) = temp[i];
+            if (i % 3 == 2) q_rev(i / 3) = temp[i];
+        }
+        Q_ohm.append(q_ohm, step);
+        Q_rxn.append(q_rxn, step);
+        Q_rev.append(q_rev, step);
     }
     step++;
 }

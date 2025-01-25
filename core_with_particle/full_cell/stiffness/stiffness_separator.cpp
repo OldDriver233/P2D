@@ -10,7 +10,8 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                                    const Eigen::Ref<MatrixXd> &c_s,
                                    std::vector<Eigen::Triplet<double>> &t, 
                                    Eigen::Ref<VectorXd> res, 
-                                   bool is_first_step) {
+                                   bool is_first_step,
+                                   std::vector<double>& temp) {
     const int dim = 1, n = 2;
     long dof_cnt = this->surface_ca_coll - this->surface_an_coll + 1;
     long elem_cnt = dof_cnt - 1;
@@ -50,15 +51,16 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     } else {
-        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+        for(int i = this->surface_an_sep - surface_an_coll; i < this->surface_ca_sep - surface_an_coll; ++i) {
+            const int src_idx = i + surface_an_coll - surface_an_sep;
             VectorXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0);
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = cached_matrix_N[(i + surface_an_coll) * n + j];
 
                 MatrixXd t_mat = N.transpose() * e_c;
                 double ele_c_e = t_mat.sum();
-                vars(i * n + j, 0) = ele_c_e * ce_int;
-                vars(i * n + j, 1) = constant::T;
+                vars(src_idx * n + j, 0) = ele_c_e * ce_int;
+                vars(src_idx * n + j, 1) = constant::T;
             }
         }
     }
@@ -83,7 +85,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     }
     if (!settings::use_customize_diffuse) {
         for (int i = 0; i < 2 * (simd_size - 1); i++) {
-            arr_d_eff[i] = constant::de_an / d_ref * eff_mat;
+            arr_d_eff[i] = constant::de_sep / d_ref * eff_mat;
         }
     } else {
         VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
@@ -153,19 +155,29 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
 
             // t part
             if constexpr(use_temp) {
-                MatrixXd e_dp2 = (dN_T * e_p).array() * (dN_T * e_p).array();
-                MatrixXd e_tdpdc = (N_T * e_t).array() * (dN_T * e_p).array() * (dN_T * e_c).array();
-                MatrixXd e_dpdc = (dN_T * e_p).array() * (dN_T * e_c).array();
-                MatrixXd e_tdc = (N_T * e_t).array() * (dN_T * e_c).array();
-                MatrixXd e_tdp = (N_T * e_t).array() * (dN_T * e_p).array();
+                double dNe_p = (dN_T * e_p).sum();
+                double Ne_t = (N_T * e_t).sum();
+                double dNe_c = (dN_T * e_c).sum();
+                double e_dp2 = dNe_p * dNe_p;
+                double e_tdpdc = Ne_t * dNe_p * dNe_c;
+                double e_dpdc = dNe_p * dNe_c;
+                double e_tdc = Ne_t * dNe_c;
+                double e_tdp = Ne_t * dNe_p;
                 e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det
                          + lambda * dNdNT * w(j) * det;
-                e_ktt += -(dk_dt * N * e_dpdc * N_T / ele_c_e);
-                e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T + dk_dt * N * e_tdc * dN_T / ele_c_e);
-                e_ktc += -(dk_dt * N * e_tdp * dN_T / ele_c_e);
                 e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
-                        + lambda * dNdNT * e_t * w(j) * det;
-                e_rt += -(k_eff * N * e_dp2 + dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
+                         + lambda * dNdNT * e_t * w(j) * det;
+                if (!is_first_step) {
+                    //e_ktt += (dk_dt * N * e_dpdc * N_T / ele_c_e);
+                    //e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T + dk_dt * N * e_tdc * dN_T / ele_c_e);
+                    //e_ktc += (dk_dt * N * e_tdp * dN_T / ele_c_e);
+                    e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
+                }
+                if (j == 0) {
+                    temp.push_back(((k_eff * e_dp2 - dk_dt * e_tdpdc / ele_c_e) * k_ref) / (constant::l_ref * constant::l_ref));
+                    temp.push_back(0);
+                    temp.push_back(0);
+                }
             }
         }
 
@@ -178,7 +190,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                     //k(i + j + dof_cnt, i + l + dof_cnt) += e_kcc(j, l);
                     t.emplace_back(i + j, i + l, e_kpp(j, l));
                     t.emplace_back(i + j, i + l + dof_cnt, e_kpc(j, l));
-                    t.emplace_back(i + j + dof_cnt, i + l, e_kcp(j, l));
+                    //t.emplace_back(i + j + dof_cnt, i + l, e_kcp(j, l));
                     t.emplace_back(i + j + dof_cnt, i + l + dof_cnt, e_kcc(j, l));
                     if constexpr(use_temp) {
                         t.emplace_back(2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + j, 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll + l, e_ktt(j, l));
@@ -197,8 +209,8 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
 template void stiffness_separator::generate<true>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
-                  bool);
+                  bool, std::vector<double> &);
 template void stiffness_separator::generate<false>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
-                  bool);
+                  bool, std::vector<double> &);

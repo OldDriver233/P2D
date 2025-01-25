@@ -1,11 +1,11 @@
 #include "stiffness_cathode_collector.h"
 
 void stiffness_cathode_collector::generate(const Eigen::Ref<MatrixXd> &u, 
-                               const Eigen::Ref<MatrixXd> &du,
-                               const Eigen::Ref<MatrixXd> &c_s,
-                               std::vector<Eigen::Triplet<double>> &t, 
-                               Eigen::Ref<VectorXd> res, 
-                               bool is_first_step) {
+                                           const Eigen::Ref<MatrixXd> &du,
+                                           const Eigen::Ref<MatrixXd> &c_s,
+                                           std::vector<Eigen::Triplet<double>> &t,
+                                           Eigen::Ref<VectorXd> res,
+                                           bool is_first_step) {
     const double I_app = constant::I_app;
     const int dim = 1, n = 2;
     const double rho = constant::density_ca_collector, cap = constant::capacity_ca_collector, lambda = constant::lambda_ca_collector, sigma = constant::sigma_ca_collector;
