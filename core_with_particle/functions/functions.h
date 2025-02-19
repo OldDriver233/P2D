@@ -7,24 +7,24 @@
 
 using Eigen::VectorXd;
 
-inline double bv(double eta) {
-    const double F = 96485.3329;
-    const double R = 8.3145;
-    const double T = 298.15;
+inline double bv(double eta, double T) {
+    const double F = constant::F;
+    const double R = constant::R;
+    //const double T = constant::t_ref;
 
     return 2 * std::sinh(0.5 * F * eta / (R * T));
 }
 
-inline double d_bv(double eta) {
-    const double F = 96485.3329;
-    const double R = 8.3145;
-    const double T = 298.15;
+inline double d_bv(double eta, double T) {
+    const double F = constant::F;
+    const double R = constant::R;
+    //const double T = constant::t_ref;
 
     return 2 * 0.5 * F / (R * T) * std::cosh(0.5 * F * eta / (R * T));
 }
 
 template<int type>
-inline double j0(double c_e, double c_a, double t = constant::t_ref) {
+inline double j0(double c_e, double c_a, double t) {
     const double k = (type == 1 ? constant::k_an : constant::k_ca);
     const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
@@ -32,7 +32,7 @@ inline double j0(double c_e, double c_a, double t = constant::t_ref) {
 }
 
 template<int type>
-inline double d_j0_e(double c_e, double c_a, double t = constant::t_ref) {
+inline double d_j0_e(double c_e, double c_a, double t) {
     const double k = (type == 1 ? constant::k_an : constant::k_ca);
     const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
@@ -40,7 +40,7 @@ inline double d_j0_e(double c_e, double c_a, double t = constant::t_ref) {
 }
 
 template<int type>
-inline double d_j0_a(double c_e, double c_a, double t = constant::t_ref) {
+inline double d_j0_a(double c_e, double c_a, double t) {
     const double k = (type == 1 ? constant::k_an : constant::k_ca);
     const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
@@ -49,7 +49,7 @@ inline double d_j0_a(double c_e, double c_a, double t = constant::t_ref) {
 }
 
 template<int type>
-inline double d_j0_t(double c_e, double c_a, double t = constant::t_ref) {
+inline double d_j0_t(double c_e, double c_a, double t) {
     const double k = (type == 1 ? constant::k_an : constant::k_ca);
     const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);

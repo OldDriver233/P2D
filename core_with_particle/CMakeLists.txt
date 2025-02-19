@@ -15,7 +15,7 @@ set(IS_MACOS OFF)
 if(DEBUG)
         set(CMAKE_CXX_FLAGS "-O0 -pg -Wall -Wextra -g")
 else()
-        set(CMAKE_CXX_FLAGS "-Ofast -march=native -DNDEBUG -flto")
+        set(CMAKE_CXX_FLAGS "-O3 -march=native -DNDEBUG -flto")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

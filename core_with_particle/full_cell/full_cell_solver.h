@@ -39,6 +39,7 @@ public:
     particle_solver anode_particle, cathode_particle;
     FunctionManager manager;
     output_manager Q_ohm, Q_rxn, Q_rev;
+    output_manager eta;
 
 
     full_cell_solver(int an, int ca, int ancoll, int cacoll, const VectorXd &coord, const VectorXd &particle_coord)
@@ -58,6 +59,7 @@ public:
         Q_ohm = output_manager(element_coord);
         Q_rxn = output_manager(element_coord);
         Q_rev = output_manager(element_coord);
+        eta = output_manager(element_coord);
     }
 
     void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);

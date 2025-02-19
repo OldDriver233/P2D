@@ -168,16 +168,22 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                 e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
                          + lambda * dNdNT * e_t * w(j) * det;
                 if (!is_first_step) {
-                    //e_ktt += (dk_dt * N * e_dpdc * N_T / ele_c_e);
-                    //e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T + dk_dt * N * e_tdc * dN_T / ele_c_e);
-                    //e_ktc += (dk_dt * N * e_tdp * dN_T / ele_c_e);
+                    e_ktt += (dk_dt * N * e_dpdc * N_T / ele_c_e) * k_ref;
+                    e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T - dk_dt * N * e_tdc * dN_T / ele_c_e) * k_ref;
+                    e_ktc += (dk_dt * N * e_tdp * dN_T / ele_c_e) * k_ref;
                     e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
                 }
                 if (j == 0) {
                     temp.push_back(((k_eff * e_dp2 - dk_dt * e_tdpdc / ele_c_e) * k_ref) / (constant::l_ref * constant::l_ref));
                     temp.push_back(0);
                     temp.push_back(0);
+                    temp.push_back(0);
                 }
+            } else if (j == 0) {
+                temp.push_back(0);
+                temp.push_back(0);
+                temp.push_back(0);
+                temp.push_back(0);
             }
         }
 

@@ -92,7 +92,7 @@ public:
 
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
     template <bool constant_matrix>
-    void calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type, int temp);
+    double calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type, int temp);
 };
 
 #endif //FEM_PARTICLE_SOLVER_H

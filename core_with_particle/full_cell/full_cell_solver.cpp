@@ -64,18 +64,21 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     long element_cnt = point_size - 1;
     long all_size = this->point_coord.size();
     int iter_time = 0;
-    double res_norm = 999999.0;
-    double first_norm;
+    double first_norm, first_delta_norm;
+    double res_norm = 1.0;
+    double rel_tol = 1.0;
+    double rel_delta = 1.0;
     MatrixXd du;
     if (settings::calc_temperature) du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
-    else du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
+    else du = MatrixXd::Zero(2 * point_size + 2 * eff_size, 1);
     std::vector<Eigen::Triplet<double> > coeff;
     std::vector<double> temp;
 
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
+    //printf("Step\tIter\tRelTol\tDelta\n");
 
-    while (iter_time < iter && res_norm > tolerance) {
+    while (iter_time < iter && rel_tol > tolerance) {
         Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size,
                                       2 * point_size + 2 * eff_size + all_size);
         if (!settings::calc_temperature) k.resize(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size);
@@ -105,22 +108,39 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         //std::cout<<k<<std::endl;
         //std::cout<<res<<std::endl;
         MatrixXd delta = -solver.solve(res);
-        //std::cout<<delta<<std::endl;
         du += delta;
         u += delta;
+
         if (step != 0) {
             if (settings::calc_temperature) {
-                anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-                cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+                double j1, j2;
+                j1 = -anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
+                j2 = -cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+                anode.dc_ssdj = j1;
+                cathode.dc_ssdj = j2;
             } else {
                 anode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
                 cathode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
             }
         }
         double norm = delta.norm();
-        res_norm = res.norm() / (2 * point_size + 2 * eff_size);
-        printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
-
+        res_norm = res.norm();
+        if (iter_time == 0) {
+            first_norm = res_norm;
+            first_delta_norm = norm;
+        } else {
+            rel_tol = res_norm / first_norm;
+            rel_delta = norm / first_delta_norm;
+        }
+        //printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
+        printf("%-8d%-8d%1.5lf %1.6lf\n", step, iter_time, rel_tol, rel_delta);
+        /*
+        if (step == 149) {
+            printf("%-8d%-8d%1.5lf %1.6lf\n", step, iter_time, rel_tol, rel_delta);
+            std::cout<<res<<std::endl;
+            std::cout<<std::endl;
+        }
+        */
 
         iter_time++;
     }
@@ -128,14 +148,17 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
         VectorXd q_ohm = VectorXd::Zero(element_coord.size());
         VectorXd q_rxn = VectorXd::Zero(element_coord.size());
         VectorXd q_rev = VectorXd::Zero(element_coord.size());
+        VectorXd v_eta = VectorXd::Zero(element_coord.size());
         for (int i = 0; i < temp.size(); i++) {
-            if (i % 3 == 0) q_ohm(i / 3) = temp[i];
-            if (i % 3 == 1) q_rxn(i / 3) = temp[i];
-            if (i % 3 == 2) q_rev(i / 3) = temp[i];
+            if (i % 4 == 0) q_ohm(i / 4) = temp[i];
+            if (i % 4 == 1) q_rxn(i / 4) = temp[i];
+            if (i % 4 == 2) q_rev(i / 4) = temp[i];
+            if (i % 4 == 3) v_eta(i / 4) = temp[i];
         }
         Q_ohm.append(q_ohm, step);
         Q_rxn.append(q_rxn, step);
         Q_rev.append(q_rev, step);
+        eta.append(v_eta, step);
     }
     step++;
 }

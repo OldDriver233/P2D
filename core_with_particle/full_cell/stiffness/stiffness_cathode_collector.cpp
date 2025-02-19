@@ -41,7 +41,7 @@ void stiffness_cathode_collector::generate(const Eigen::Ref<MatrixXd> &u,
 
         for(int j = 0; j < n; j++) {
             for(int l = 0; l < n; l++) {
-                t.push_back(Eigen::Triplet<double>(i + j + 2 * dof_cnt + 2 * dof_cnt_eff, i + l + 2 * dof_cnt + 2 * dof_cnt_eff, e_ktt(j, l)));
+                t.emplace_back(i + j + 2 * dof_cnt + 2 * dof_cnt_eff, i + l + 2 * dof_cnt + 2 * dof_cnt_eff, e_ktt(j, l));
             }
             res(i + j + 2 * dof_cnt + 2 * dof_cnt_eff) += e_rt(j);
         }

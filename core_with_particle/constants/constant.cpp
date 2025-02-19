@@ -34,9 +34,9 @@ double constant::k;
 int constant::type;
 int constant::particle_segment;
 double constant::delta_u;
-double constant::R = 8.314;
+double constant::R = 8.3144598;
 double constant::T = 298.15;
-double constant::F = 96485.3329;
+double constant::F = 96485.33289;
 double constant::t_ref = 298.15;
 double constant::c_max_an;
 double constant::c_max_ca;
@@ -123,6 +123,10 @@ void constant::read() {
     constant::lambda_ca_collector = data["lambda_ca_collector"];
     constant::lambda_sep = data["lambda_sep"];
     constant::I_app = data["I_app"];
+    constant::exchange_energy_an = data["exchange_energy_an"];
+    constant::exchange_energy_ca = data["exchange_energy_ca"];
+    constant::diffuse_energy_an = data["diffuse_energy_an"];
+    constant::diffuse_energy_ca = data["diffuse_energy_ca"];
 
 
     constant::k_ref = kappa(ce_int);
