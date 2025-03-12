@@ -76,11 +76,14 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     } else {
-        VectorXd kappa = this->pfm->kappa.initial_node->eval(vars);
-        VectorXd d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
-        for (int i = 0; i < 2 * (simd_size - 1); i++) {
-            arr_kappa[i] = kappa(i) / constant::k_ref * eff_mat;
-            arr_d_kappa[i] = d_kappa(i) * ce_int / constant::k_ref * eff_mat;
+        for(int i = this->surface_an_sep - surface_an_coll; i < this->surface_ca_sep - surface_an_coll; ++i) {
+            const int src_idx = i + surface_an_coll - surface_an_sep;
+            for (int j = 0; j < n; j++) {
+                double k_eff = pfm->f_kappa(vars(src_idx * n + j, 0), vars(src_idx * n + j, 1)) / constant::k_ref * eff_mat;
+                double d_k_eff = pfm->f_d_kappa(vars(src_idx * n + j, 0), vars(src_idx * n + j, 1)) * ce_int / constant::k_ref * eff_mat;
+                arr_kappa[src_idx * n + j] = k_eff;
+                arr_d_kappa[src_idx * n + j] = d_k_eff;
+            }
         }
     }
     if (!settings::use_customize_diffuse) {
@@ -88,9 +91,9 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             arr_d_eff[i] = constant::de_sep / d_ref * eff_mat;
         }
     } else {
-        VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
+        //VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
         for (int i = 0; i < 2 * (simd_size - 1); i++) {
-            arr_d_eff[i] = d_l(i) / d_ref * eff_mat;
+            arr_d_eff[i] = pfm->f_diffuse_l(vars(i, 0), vars(i, 1)) / d_ref * eff_mat;
         }
     }
 

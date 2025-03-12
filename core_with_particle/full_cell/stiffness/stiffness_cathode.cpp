@@ -99,9 +99,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_du[src_idx] = d_uoc<2>(c_ss[src_idx]) / c_max;
         }
     } else {
-        VectorXd uoc = this->pfm->uoc_cathode.initial_node->eval(c_ss);
-        VectorXd d_uoc = this->pfm->uoc_cathode.initial_node->eval_deriv(c_ss, 0);
-        VectorXd v_du = this->pfm->cathode_entropy.initial_node->eval(c_ss);
+        //VectorXd uoc = this->pfm->uoc_cathode.initial_node->eval(c_ss);
+        //VectorXd d_uoc = this->pfm->uoc_cathode.initial_node->eval_deriv(c_ss, 0);
+        //VectorXd v_du = this->pfm->cathode_entropy.initial_node->eval(c_ss);
         for(int i = this->surface_ca_sep - this->surface_an_coll; i <= elem_cnt; ++i) {
             const int idx = i - this->surface_ca_sep + this->surface_an_sep + 1;
             const int src_idx = i - this->surface_ca_sep + this->surface_an_coll;
@@ -110,12 +110,12 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 t = u_ptr[2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll];
             }
 
-            arr_uoc[src_idx] = uoc(src_idx);
+            arr_uoc[src_idx] = pfm->f_uoc_anode(c_ss[src_idx]);
             arr_eta[src_idx] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[src_idx];
-            arr_d_uoc[src_idx] = d_uoc(src_idx);
+            arr_d_uoc[src_idx] = pfm->f_d_uoc_cathode(c_ss[src_idx]);
             arr_bv[src_idx] = bv(arr_eta[src_idx], t);
             arr_d_bv[src_idx] = d_bv(arr_eta[src_idx], t);
-            arr_du[src_idx] = v_du(src_idx);
+            arr_du[i] = this->pfm->f_cathode_entropy(c_ss[src_idx]);
         }
     }
 
@@ -163,11 +163,14 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     } else {
-        VectorXd kappa = this->pfm->kappa.initial_node->eval(vars);
-        VectorXd d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
-        for (int i = 0; i < 2 * (simd_size - 1); i++) {
-            arr_kappa[i] = kappa(i) / constant::k_ref * eff_mat;
-            arr_d_kappa[i] = d_kappa(i) * ce_int / constant::k_ref * eff_mat;
+        for(int i = this->surface_ca_sep - this->surface_an_coll; i < elem_cnt; ++i) {
+            const int src_idx = i - this->surface_ca_sep + this->surface_an_coll;
+            for (int j = 0; j < n; j++) {
+                double k_eff = pfm->f_kappa(vars(src_idx * n + j, 0), vars(src_idx * n + j, 1)) / constant::k_ref * eff_mat;
+                double d_k_eff = pfm->f_d_kappa(vars(src_idx * n + j, 0), vars(src_idx * n + j, 1)) * ce_int / constant::k_ref * eff_mat;
+                arr_kappa[src_idx * n + j] = k_eff;
+                arr_d_kappa[src_idx * n + j] = d_k_eff;
+            }
         }
     }
     if (!settings::use_customize_diffuse) {
@@ -179,10 +182,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         }
     } else {
         for(int i = this->surface_ca_sep - this->surface_an_coll; i < elem_cnt; ++i) {
-            VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
             const int src_idx = i - this->surface_ca_sep + this->surface_an_coll;
             for (int j = 0; j < n; j++) {
-                arr_d_eff[src_idx * n + j] = d_l(src_idx * n + j) / d_ref * eff_mat;
+                arr_d_eff[src_idx * n + j] = pfm->f_diffuse_l(vars(src_idx * n + j, 0), vars(src_idx * n + j, 1)) / d_ref * eff_mat;
             }
         }
     }

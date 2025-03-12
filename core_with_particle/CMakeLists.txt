@@ -88,6 +88,12 @@ find_library(HIREDIS_LIB hiredis)
 if(NOT IS_MACOS)
 target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so")
 else()
+        execute_process(COMMAND /opt/homebrew/Cellar/llvm/19.1.7_1/bin/llvm-config --cxxflags --ldflags --system-libs --libs core
+                COMMAND tr "\n" " "
+                OUTPUT_VARIABLE flags)
+
+        set(CMAKE_CXX_FLAGS "${flags} ${CMAKE_CXX_FLAGS}")
+        include_directories("/opt/homebrew/Cellar/llvm/19.1.7_1/include")
         include_directories("/opt/homebrew/include")
         target_link_options(fem PRIVATE -framework Accelerate /opt/homebrew/opt/lapack/lib/liblapacke.dylib)
         target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB})

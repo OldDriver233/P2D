@@ -9,11 +9,10 @@
 #include <tuple>
 
 using Eigen::VectorXd;
-using json = nlohmann::json;
 
 inline std::tuple<VectorXd, int, int, int, int> coord_reader() {
     std::ifstream f(settings::coord_path);
-    json data = json::parse(f);
+    nlohmann::json data = nlohmann::json::parse(f);
     auto coord_vec = data["coords"].template get<std::vector<double>>();
     VectorXd coord(coord_vec.size());
     for(int i = 0; i < coord_vec.size(); i++) {

@@ -101,9 +101,6 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             arr_du[i] = arr_d_uoc[i] / c_max;
         }
     } else {
-        VectorXd uoc = this->pfm->uoc_anode.initial_node->eval(c_ss);
-        VectorXd d_uoc = this->pfm->uoc_anode.initial_node->eval_deriv(c_ss, 0);
-        VectorXd v_du = this->pfm->anode_entropy.initial_node->eval(c_ss);
         for (int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
             const int idx = i;
             double t = constant::T;
@@ -111,12 +108,12 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 t = u_ptr[2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll];
             }
 
-            arr_uoc[i] = uoc(i);
+            arr_uoc[i] = this->pfm->f_uoc_anode(c_ss[i]);
             arr_eta[i] = u_ptr[2 * dof_cnt + idx] - u_ptr[i] - arr_uoc[i];
-            arr_d_uoc[i] = d_uoc(i);
+            arr_d_uoc[i] = this->pfm->f_d_uoc_anode(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i], t);
             arr_d_bv[i] = d_bv(arr_eta[i], t);
-            arr_du[i] = v_du(i);
+            arr_du[i] = this->pfm->f_anode_entropy(c_ss[i]);
         }
     }
 
@@ -162,11 +159,13 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     } else {
-        VectorXd kappa = this->pfm->kappa.initial_node->eval(vars);
-        VectorXd d_kappa = this->pfm->kappa.initial_node->eval_deriv(vars, 0);
-        for (int i = 0; i < 2 * (simd_size - 1); i++) {
-            arr_kappa[i] = kappa(i) / constant::k_ref * eff_mat;
-            arr_d_kappa[i] = d_kappa(i) * ce_int / constant::k_ref * eff_mat;
+        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
+            for (int j = 0; j < n; j++) {
+                double k_eff = pfm->f_kappa(vars(i * n + j, 0), vars(i * n + j, 1)) / constant::k_ref * eff_mat;
+                double d_k_eff = pfm->f_d_kappa(vars(i * n + j, 0), vars(i * n + j, 1)) * ce_int / constant::k_ref * eff_mat;
+                arr_kappa[i * n + j] = k_eff;
+                arr_d_kappa[i * n + j] = d_k_eff;
+            }
         }
     }
     if (!settings::use_customize_diffuse) {
@@ -177,33 +176,11 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         }
     } else {
         for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
-            VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
             for (int j = 0; j < n; j++) {
-                arr_d_eff[i * n + j] = d_l(i * n + j) / d_ref * eff_mat;
+                arr_d_eff[i * n + j] = pfm->f_diffuse_l(vars(i * n + j, 0), vars(i * n + j, 1)) / d_ref * eff_mat;
             }
         }
     }
-    /*
-    if (use_temp) {
-        for (int i = 0; i < this->surface_an_sep - this->surface_an_coll; ++i) {
-            MatrixXd e_p = u({i, i + 1}, 0); // phi_e
-            MatrixXd e_c = u({dof_cnt + i, dof_cnt + i + 1}, 0); // c_e
-            MatrixXd e_s = u({2 * dof_cnt + i, 2 * dof_cnt + i + 1}, 0); // phi_s
-            MatrixXd e_t = u({
-                                 2 * dof_cnt + 2 * dof_cnt_eff + i + this->surface_an_coll,
-                                 2 * dof_cnt + 2 * dof_cnt_eff + i + 1 + this->surface_an_coll
-                             }, 0);
-            double length = (points(i + this->surface_an_coll + 1, 0) - points(i + this->surface_an_coll, 0)) * constant::l_ref;
-            double kappa_eff = arr_kappa[i];
-            double sigma = sigma_eff * sigma_ref;
-            double q_ohm = sigma * pow((e_s(1,0) - e_s(0,0)) / length, 2);
-            double q_ohm2 = kappa_eff * pow((e_p(1,0)-e_p(0,0)) / length, 2);
-            double q_ohm3 = 2 * kappa_eff * constant::R * (e_t(0,0)+e_t(1,0)) / 2 / constant::F * (1 - constant::trans)
-                         * ((log(e_c(1,0) * ce_int) - log(e_c(0,0) * ce_int)) / length) * ((e_p(1,0) - e_p(0,0)) / length);
-            std::cout<<q_ohm<<" "<<q_ohm2<<" "<<q_ohm3<<std::endl;
-        }
-    }
-    */
 
     for (int i = 0; i <= this->surface_an_sep - this->surface_an_coll; ++i) {
         const int idx = i;

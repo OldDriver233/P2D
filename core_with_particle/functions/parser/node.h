@@ -4,18 +4,22 @@
 #include <string>
 #include <memory>
 #include <iostream>
-#include <format>
 
-#include <eigen3/Eigen/Dense>
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "context.h"
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
+struct CompileContext;
+using namespace llvm;
 
 class Node {
 public:
-    virtual VectorXd eval(const Eigen::Ref<MatrixXd>&) = 0;
-    virtual VectorXd eval_deriv(const Eigen::Ref<MatrixXd>&, int) = 0;
-    virtual void show() = 0;
+    virtual Value* emit(CompileContext &) = 0;
+    virtual Value* emit_deriv(CompileContext&, int) = 0;
     virtual ~Node() {}
 };
 
@@ -25,20 +29,17 @@ public:
     ~FuncNameNode() {}
     FuncNameNode(const FuncNameNode& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& _) override {
+    Value* emit(CompileContext &_) override {
         (void) _;
         throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& _, int __) override {
+    Value* emit_deriv(CompileContext &_, int __) override {
         (void) _;
         (void) __;
         throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
     }
 
-    void show() override {
-        std::cout<<std::format("{{ FuncNameNode }}");
-    }
 };
 
 class LiteralNode: public Node {
@@ -51,18 +52,15 @@ public:
     ~LiteralNode() = default;
     LiteralNode(const LiteralNode& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(VectorXd::Ones(x.rows()) * value);
+    Value* emit(CompileContext &ctx) override {
+        return ConstantFP::get(*ctx.CContext, APFloat(value));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int _) override {
+    Value* emit_deriv(CompileContext &ctx, int _) override {
         (void) _;
-        return std::move(VectorXd::Zero(x.rows()));
+        return ConstantFP::get(*ctx.CContext, APFloat(0.0));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ LiteralNode value = {} }}", value);
-    }
 };
 
 class VariableNode: public Node {
@@ -73,18 +71,15 @@ public:
     ~VariableNode() {}
     VariableNode(const VariableNode& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return x.col(variable_id);
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CTmp[variable_id];
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        if(variable_id == wrt) return std::move(VectorXd::Ones(x.rows()));
-        else return std::move(VectorXd::Zero(x.rows()));
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        if(variable_id == wrt) return ConstantFP::get(*ctx.CContext, APFloat(1.0));
+        else return ConstantFP::get(*ctx.CContext, APFloat(0.0));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ VariableNode variable_id = {} }}", variable_id);
-    }
 };
 
 class NegateNode: public Node {
@@ -95,19 +90,14 @@ public:
     ~NegateNode() {}
     NegateNode(const NegateNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(-val->eval(x));
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CBuilder->CreateFNeg(val->emit(ctx));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(-val->eval_deriv(x, wrt));
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        return ctx.CBuilder->CreateFNeg(val->emit(ctx));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ NegateNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class ExpNode: public Node {
@@ -118,19 +108,21 @@ public:
     ~ExpNode() {}
     ExpNode(const ExpNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().exp());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("exp")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(val->eval(x).array().exp() * val->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("exp")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFMul(dV[0], ctx.CBuilder->CreateCall(fn, V));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ ExpNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class SinNode: public Node {
@@ -141,19 +133,21 @@ public:
     ~SinNode() {}
     SinNode(const SinNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().sin());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("sin")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(val->eval(x).array().cos() * val->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("cos")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFMul(dV[0], ctx.CBuilder->CreateCall(fn, V));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ SinNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class CosNode: public Node {
@@ -164,19 +158,21 @@ public:
     ~CosNode() {}
     CosNode(const CosNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().cos());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("cos")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(-val->eval(x).array().sin() * val->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("sin")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateNeg(ctx.CBuilder->CreateFMul(dV[0], ctx.CBuilder->CreateCall(fn, V)));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ CosNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class TanNode: public Node {
@@ -187,20 +183,21 @@ public:
     ~TanNode() {}
     TanNode(const TanNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().tan());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("tan")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        Eigen::ArrayXd cos = val->eval(x).array().cos().array();
-        return std::move(val->eval_deriv(x, wrt).array() / (cos * cos));
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("cos")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFDiv(dV[0], ctx.CBuilder->CreateFMul(ctx.CBuilder->CreateCall(fn, V), ctx.CBuilder->CreateCall(fn, V)));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ TanNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class SinhNode: public Node {
@@ -211,19 +208,21 @@ public:
     ~SinhNode() {}
     SinhNode(const SinhNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().sinh());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("sinh")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(val->eval(x).array().cosh() * val->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("cosh")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFMul(dV[0], ctx.CBuilder->CreateCall(fn, V));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ SinhNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class CoshNode: public Node {
@@ -234,19 +233,21 @@ public:
     ~CoshNode() {}
     CoshNode(const CoshNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().cosh());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("cosh")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(val->eval(x).array().sinh() * val->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("sinh")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFMul(dV[0], ctx.CBuilder->CreateCall(fn, V));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ CoshNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class TanhNode: public Node {
@@ -257,20 +258,21 @@ public:
     ~TanhNode() {}
     TanhNode(const TanhNode& other) = delete;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(val->eval(x).array().tanh());
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CExtern.find("tanh")->second;
+        std::vector<Value*> V;
+        V.push_back(val->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        Eigen::ArrayXd cosh = val->eval(x).array().cosh().array();
-        return std::move(val->eval_deriv(x, wrt).array() / (cosh * cosh));
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CExtern.find("cosh")->second;
+        std::vector<Value*> V, dV;
+        V.push_back(val->emit(ctx));
+        dV.push_back(val->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFDiv(dV[0], ctx.CBuilder->CreateFMul(ctx.CBuilder->CreateCall(fn, V), ctx.CBuilder->CreateCall(fn, V)));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ TanhNode \n value = ");
-        val->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class AddNode: public Node {
@@ -282,21 +284,14 @@ public:
     AddNode(const AddNode& other) = delete;
     AddNode(AddNode&& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(left->eval(x).array() + right->eval(x).array());
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CBuilder->CreateFAdd(left->emit(ctx), right->emit(ctx));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(left->eval_deriv(x, wrt).array() + right->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        return ctx.CBuilder->CreateFAdd(left->emit_deriv(ctx, wrt), right->emit_deriv(ctx, wrt));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ AddNode \nLeft = ");
-        left->show();
-        std::cout<<std::format("\nRight = ");
-        right->show();
-        std::cout<<std::format("\n}}");
-    }
 };
 
 class SubNode: public Node {
@@ -308,21 +303,14 @@ public:
     SubNode(const SubNode& other) = delete;
     SubNode(SubNode&& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(left->eval(x).array() - right->eval(x).array());
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CBuilder->CreateFSub(left->emit(ctx), right->emit(ctx));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(left->eval_deriv(x, wrt).array() - right->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        return ctx.CBuilder->CreateFSub(left->emit_deriv(ctx, wrt), right->emit_deriv(ctx, wrt));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ SubNode \nLeft = ");
-        left->show();
-        std::cout<<std::format("\nRight = ");
-        right->show();
-        std::cout<<std::format(" }}");
-    }
 };
 
 class MultNode: public Node {
@@ -333,22 +321,17 @@ public:
     ~MultNode() {}
     MultNode(const MultNode& other) = delete;
     MultNode(MultNode&& other) = default;
-
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(left->eval(x).array() * right->eval(x).array());
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CBuilder->CreateFMul(left->emit(ctx), right->emit(ctx));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        return std::move(left->eval_deriv(x, wrt).array() * right->eval(x).array() + left->eval(x).array() * right->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        return ctx.CBuilder->CreateFAdd(
+            ctx.CBuilder->CreateFMul(left->emit(ctx), right->emit_deriv(ctx, wrt)),
+            ctx.CBuilder->CreateFMul(left->emit_deriv(ctx, wrt), right->emit(ctx))
+            );
     }
 
-    void show() override {
-        std::cout<<std::format("{{ MultNode \nLeft = ");
-        left->show();
-        std::cout<<std::format("\nRight = ");
-        right->show();
-        std::cout<<std::format(" }}");
-    }
 };
 
 class DivNode: public Node {
@@ -360,22 +343,23 @@ public:
     DivNode(const DivNode& other) = delete;
     DivNode(DivNode&& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(left->eval(x).array() / right->eval(x).array());
+    Value* emit(CompileContext &ctx) override {
+        return ctx.CBuilder->CreateFDiv(left->emit(ctx), right->emit(ctx));
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        Eigen::ArrayXd rval = right->eval(x).array();
-        return std::move((left->eval_deriv(x, wrt).array() * rval - left->eval(x).array() * right->eval_deriv(x, wrt).array()) / (rval * rval));
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        return ctx.CBuilder->CreateFDiv(
+                ctx.CBuilder->CreateFSub(
+                    ctx.CBuilder->CreateFMul(left->emit_deriv(ctx, wrt), right->emit(ctx)),
+                    ctx.CBuilder->CreateFMul(left->emit(ctx), right->emit_deriv(ctx, wrt))
+                    ),
+                ctx.CBuilder->CreateFMul(
+                    right->emit(ctx),
+                    right->emit(ctx)
+                    )
+            );
     }
 
-    void show() override {
-        std::cout<<std::format("{{ DivNode \nLeft = ");
-        left->show();
-        std::cout<<std::format("\nRight = ");
-        right->show();
-        std::cout<<std::format(" }}");
-    }
 };
 
 class PowNode: public Node {
@@ -387,20 +371,23 @@ public:
     PowNode(const DivNode& other) = delete;
     PowNode(PowNode&& other) = default;
 
-    VectorXd eval(const Eigen::Ref<MatrixXd>& x) override {
-        return std::move(left->eval(x).array().pow(right->eval(x).array()));
+    Value* emit(CompileContext &ctx) override {
+        auto fn = ctx.CModule->getFunction("pow");
+        std::vector<Value*> V;
+        V.push_back(left->emit(ctx));
+        V.push_back(right->emit(ctx));
+        return ctx.CBuilder->CreateCall(fn, V);
     }
 
-    VectorXd eval_deriv(const Eigen::Ref<MatrixXd>& x, int wrt) override {
-        Eigen::ArrayXd rval = right->eval(x).array();
-        return std::move(rval * left->eval(x).array().pow(rval - 1) * left->eval_deriv(x, wrt).array());
+    Value* emit_deriv(CompileContext &ctx, int wrt) override {
+        auto fn = ctx.CModule->getFunction("pow");
+        std::vector<Value*> V, dV;
+        V.push_back(left->emit(ctx));
+        V.push_back(ctx.CBuilder->CreateFSub(right->emit(ctx), ConstantFP::get(*ctx.CContext, APFloat(1.0))));
+        dV.push_back(left->emit_deriv(ctx, wrt));
+        return ctx.CBuilder->CreateFMul(
+            dV[0],
+            ctx.CBuilder->CreateFMul(right->emit(ctx), ctx.CBuilder->CreateCall(fn, V)));
     }
 
-    void show() override {
-        std::cout<<std::format("{{ PowNode \nLeft = ");
-        left->show();
-        std::cout<<std::format("\nRight = ");
-        right->show();
-        std::cout<<std::format(" }}");
-    }
 };
