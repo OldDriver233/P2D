@@ -346,7 +346,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                     e_ktt += (dk_dt * NNT * e_dpdc / ele_c_e) * k_ref * w(j) * det;
                     e_ktp += -(k_eff * NdNT * 2 * dNe_p - dk_dt * NdNT * e_tdc / ele_c_e) * k_ref * w(j) * det;
                     e_ktc += (dk_dt * NdNT * e_tdp / ele_c_e) * k_ref * w(j) * det;
-                    e_kts += -(sigma_eff * NdNT * 2 * e_ds) * sigma_ref * w(j) * det;
+                    e_kts += -(sigma_eff * NdNT * 2 * dNe_s) * sigma_ref * w(j) * det;
                     e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
                     e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
                     // Q_rxn

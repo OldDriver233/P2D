@@ -44,7 +44,7 @@ public:
         MatrixXd xs = get_integration_point<dim, n>();
         MatrixXd w = get_integration_weight<dim, n>();
 
-        const double eff_1 = R_s * R_s / D_sref / constant::dt * 4 * M_PI;
+        const double eff_1 = R_s * R_s / D_sref * 4 * M_PI;
         const double eff_2 = D_s / D_sref * 4 * M_PI;
 
         for(int i = 0; i < elem_size; i++) {
@@ -86,7 +86,7 @@ public:
         assembled_A_2.setFromTriplets(coeff_A_2.begin(), coeff_A_2.end());
         assembled_B.setFromTriplets(coeff_B.begin(), coeff_B.end());
 
-        constant_solver.compute(assembled_A_1 + assembled_A_2);
+        constant_solver.compute(assembled_A_1 + assembled_A_2 / constant::dt);
         j_coeff = constant_solver.solve(pre_j_coeff);
     }
 

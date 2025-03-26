@@ -11,6 +11,7 @@ bool settings::use_customize_kappa = false;
 bool settings::use_customize_uoc = false;
 bool settings::calc_temperature = true;
 bool settings::use_customize_diffuse = false;
+bool settings::use_adaptive_time_step = false;
 std::string settings::uoc_anode_path;
 std::string settings::uoc_cathode_path;
 std::string settings::kappa_path;
@@ -38,4 +39,5 @@ void settings::read(const std::string& filename) {
     TRY_READ(cathode_entropy_path)
     TRY_READ(diffuse_path)
     TRY_READ(calc_temperature)
+    TRY_READ(use_adaptive_time_step)
 }

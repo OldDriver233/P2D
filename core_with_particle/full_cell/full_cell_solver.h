@@ -35,11 +35,14 @@ public:
     stiffness_anode_collector anode_collector;
     stiffness_cathode_collector cathode_collector;
     int step = 0;
+    double current_time = 0.0;
+    double next_detail_time = 0.0;
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
     particle_solver anode_particle, cathode_particle;
     FunctionManager manager;
     output_manager Q_ohm, Q_rxn, Q_rev;
     output_manager eta;
+    std::vector<double> temp;
 
 
     full_cell_solver(int an, int ca, int ancoll, int cacoll, const VectorXd &coord, const VectorXd &particle_coord)
@@ -62,7 +65,8 @@ public:
         eta = output_manager(element_coord);
     }
 
-    void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>);
+    void print_detail();
+    void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, double, bool);
     void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double> &,
                         Eigen::Ref<VectorXd>, bool);
 };

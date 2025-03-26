@@ -9,6 +9,8 @@ using json = nlohmann::json;
 double constant::tolerance;
 double constant::dt;
 int constant::step;
+double constant::output_interval;
+double constant::finish_time;
 double constant::epsilon_e_an;
 double constant::epsilon_s_an;
 double constant::epsilon_e_ca;
@@ -77,6 +79,10 @@ void constant::read() {
     constant::tolerance = data["tolerance"];
     constant::dt = data["dt"];
     constant::step = data["step"];
+    constant::output_interval = data["output_interval"];
+    if (settings::use_adaptive_time_step) {
+        constant::finish_time = data["finish_time"];
+    }
     constant::epsilon_e_an = data["epsilon_e_an"];
     constant::epsilon_s_an = data["epsilon_s_an"];
     constant::epsilon_e_ca = data["epsilon_e_ca"];

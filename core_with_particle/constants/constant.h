@@ -7,6 +7,8 @@ public:
     static double tolerance;
     static double dt;
     static int step;
+    static double output_interval;
+    static double finish_time;
     static double epsilon_e_an;
     static double epsilon_s_an;
     static double epsilon_e_ca;

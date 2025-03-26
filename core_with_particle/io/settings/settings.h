@@ -10,6 +10,7 @@ public:
     static bool use_customize_uoc;
     static bool use_customize_kappa;
     static bool use_customize_diffuse;
+    static bool use_adaptive_time_step;
     static std::string uoc_anode_path;
     static std::string uoc_cathode_path;
     static std::string kappa_path;

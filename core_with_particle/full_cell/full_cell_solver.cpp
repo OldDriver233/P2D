@@ -58,7 +58,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
     }
 }
 
-void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
+void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, double time, bool do_print) {
     long point_size = this->cacoll - this->ancoll + 1;
     long eff_size = point_size - (ca - an - 1);
     long element_cnt = point_size - 1;
@@ -72,7 +72,8 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
     if (settings::calc_temperature) du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
     else du = MatrixXd::Zero(2 * point_size + 2 * eff_size, 1);
     std::vector<Eigen::Triplet<double> > coeff;
-    std::vector<double> temp;
+    //std::vector<double> temp;
+    this->current_time = time;
 
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
@@ -132,33 +133,27 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s) {
             rel_tol = res_norm / first_norm;
             rel_delta = norm / first_delta_norm;
         }
-        //printf("Step %d Iter %d: %.12lf, %.12lf\n", step, iter_time, norm, res_norm);
-        printf("%-8d%-8d%1.5lf %1.6lf\n", step, iter_time, rel_tol, rel_delta);
-        /*
-        if (step == 149) {
-            printf("%-8d%-8d%1.5lf %1.6lf\n", step, iter_time, rel_tol, rel_delta);
-            std::cout<<res<<std::endl;
-            std::cout<<std::endl;
-        }
-        */
+        printf("%-8d%-8d%1.5lf %1.5lf %e\n", step, iter_time, rel_tol, rel_delta, res_norm);
 
         iter_time++;
     }
-    if (step % 36 == 0) {
-        VectorXd q_ohm = VectorXd::Zero(element_coord.size());
-        VectorXd q_rxn = VectorXd::Zero(element_coord.size());
-        VectorXd q_rev = VectorXd::Zero(element_coord.size());
-        VectorXd v_eta = VectorXd::Zero(element_coord.size());
-        for (int i = 0; i < temp.size(); i++) {
-            if (i % 4 == 0) q_ohm(i / 4) = temp[i];
-            if (i % 4 == 1) q_rxn(i / 4) = temp[i];
-            if (i % 4 == 2) q_rev(i / 4) = temp[i];
-            if (i % 4 == 3) v_eta(i / 4) = temp[i];
-        }
-        Q_ohm.append(q_ohm, step);
-        Q_rxn.append(q_rxn, step);
-        Q_rev.append(q_rev, step);
-        eta.append(v_eta, step);
-    }
+    if (do_print) this->print_detail();
     step++;
+}
+
+void full_cell_solver::print_detail() {
+    VectorXd q_ohm = VectorXd::Zero(element_coord.size());
+    VectorXd q_rxn = VectorXd::Zero(element_coord.size());
+    VectorXd q_rev = VectorXd::Zero(element_coord.size());
+    VectorXd v_eta = VectorXd::Zero(element_coord.size());
+    for (int i = 0; i < temp.size(); i++) {
+        if (i % 4 == 0) q_ohm(i / 4) = temp[i];
+        if (i % 4 == 1) q_rxn(i / 4) = temp[i];
+        if (i % 4 == 2) q_rev(i / 4) = temp[i];
+        if (i % 4 == 3) v_eta(i / 4) = temp[i];
+    }
+    Q_ohm.append(q_ohm, this->current_time);
+    Q_rxn.append(q_rxn, this->current_time);
+    Q_rev.append(q_rev, this->current_time);
+    eta.append(v_eta, this->current_time);
 }
