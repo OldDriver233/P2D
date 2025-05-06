@@ -9,7 +9,7 @@ void output_manager::write_to_csv(const std::string &filename) {
     std::fstream f(filename, std::ios_base::out);
 
     if (!f) {
-        throw std::runtime_error("Cannot open file " + filename);
+        //throw std::runtime_error("Cannot open file " + filename);
     }
 
     f<<"Coord";

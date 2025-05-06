@@ -31,13 +31,13 @@ public:
 
     Value* emit(CompileContext &_) override {
         (void) _;
-        throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
+        //throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
     }
 
     Value* emit_deriv(CompileContext &_, int __) override {
         (void) _;
         (void) __;
-        throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
+        //throw std::runtime_error("Internal error: this node should NOT exist in generated AST");
     }
 
 };

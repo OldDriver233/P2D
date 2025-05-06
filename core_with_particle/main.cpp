@@ -146,9 +146,6 @@ void calc_cell() {
         while (step_control.prev_time < constant::finish_time) {
             s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
             step_control.update_solution(u, c_s, 0);
-            //if (s.step == 100) {
-            //    std::cout<<step_control.u_hist[1] - step_control.u_hist[0]<<std::endl;
-            //}
             step_control.update_dt();
             while (step_control.status == StepStatus::NeedRecalc) {
                 u = step_control.u_hist[1];

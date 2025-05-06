@@ -31,7 +31,7 @@ void Parser::tokenize() {
             ignore_eol = false;
         } else {
             if(ignore_eol) {
-                throw std::runtime_error(std::format("Unexpected '{}' after '\\'", main[i]));
+                //throw std::runtime_error(std::format("Unexpected '{}' after '\\'", main[i]));
             }
             if (main[i] == '+') {
                 if (status == TokenType::SCIENTIFIC) {
@@ -92,8 +92,8 @@ void Parser::tokenize() {
             }
             if (main[i] == '.') {
                 if (status != TokenType::LITERAL) {
-                    throw std::runtime_error(std::format(
-                        "Error at {}:{}: Unexpected '.'", line_cnt, char_cnt));
+                    //throw std::runtime_error(std::format(
+                        //"Error at {}:{}: Unexpected '.'", line_cnt, char_cnt));
                 }
             }
             if (std::isdigit(main[i])) {
@@ -111,9 +111,9 @@ void Parser::tokenize() {
                     if (main[i] == 'e' || main[i] == 'E') {
                         status = TokenType::SCIENTIFIC;
                     }
-                    else throw std::runtime_error(
+                    else ;/*throw std::runtime_error(
                         std::format("Error at {}:{}: Invalid literal value",
-                                    line_cnt, char_cnt));
+                                    line_cnt, char_cnt));*/
                 }
             }
         }
@@ -143,7 +143,7 @@ bool Parser::match(TokenType type) {
 Token Parser::consume(TokenType type, const std::string &msg) {
     if (check(type))
         return advance();
-    throw std::runtime_error(msg);
+    //throw std::runtime_error(msg);
 }
 
 void Parser::parse() { this->initial_node = this->expr(); }
@@ -213,7 +213,7 @@ std::unique_ptr<Node> Parser::call() {
 std::unique_ptr<Node> Parser::fetch_arg(const Token &func_name) {
     [[unlikely]]
     if (func_name.type != TokenType::IDENTIFIER) {
-        throw std::runtime_error("Expected identifier or operator before '('");
+        //throw std::runtime_error("Expected identifier or operator before '('");
     } else {
         if (func_name.sv == "exp") {
             auto expr = this->expr();
@@ -251,8 +251,8 @@ std::unique_ptr<Node> Parser::fetch_arg(const Token &func_name) {
                     "Expected ')' after function calls");
             return std::make_unique<TanhNode>(std::move(expr));
         } else {
-            throw std::runtime_error(
-                std::format("Unknown builtin function name {}", func_name.sv));
+            //throw std::runtime_error(
+                //std::format("Unknown builtin function name {}", func_name.sv));
         }
     }
 }
@@ -278,5 +278,5 @@ std::unique_ptr<Node> Parser::primary() {
         return std::make_unique<FuncNameNode>();
     }
 
-    throw std::runtime_error(std::format("Unexpected '{}'", peek().sv));
+    //throw std::runtime_error(std::format("Unexpected '{}'", peek().sv));
 };

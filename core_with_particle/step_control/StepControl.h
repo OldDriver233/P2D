@@ -29,8 +29,8 @@ public:
 
     VectorXd u_hist[3];
     VectorXd c_s_hist[3];
-    StepMode mode;
-    StepStatus status;
+    StepMode mode = StepMode::Delta;
+    StepStatus status = StepStatus::Ok;
 
     StepControl() = default;
     StepControl(const StepControl&) = default;
