@@ -1,5 +1,7 @@
 #include "particle_solver.h"
 
+#include "../../step_control/StepControl.h"
+
 void particle_solver::pre_calc(const Eigen::Ref<MatrixXd> &c_s) {
     this->last_cs = c_s;
 }
@@ -14,14 +16,14 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
             if constexpr (!constant_matrix) {
                 double coeff = exp(constant::diffuse_energy_an / constant::R * (-1 / u(temp + i, 0) + 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
-                solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / constant::dt);
+                solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                 j_coeff = solver_A.solve(pre_j_coeff);
-                MatrixXd Bc_s = assembled_B / constant::dt * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
+                MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
                 c_s.block(i * particle_dof_size, 0, particle_dof_size, 1) =
                 solver_A.solve(Bc_s) - j_coeff * u(2 * pt_size + eff_size + i, 0);
                 ret = j_coeff(constant::particle_segment);
             } else {
-                MatrixXd Bc_s = assembled_B / constant::dt * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
+                MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
                 c_s.block(i * particle_dof_size, 0, particle_dof_size, 1) =
                 constant_solver.solve(Bc_s) - j_coeff * u(2 * pt_size + eff_size + i, 0);
             }
@@ -31,16 +33,16 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
             if constexpr (!constant_matrix) {
                 double coeff = exp(constant::diffuse_energy_ca / constant::R * (-1 / u(temp + i, 0) + 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
-                solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / constant::dt);
+                solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                 j_coeff = solver_A.solve(pre_j_coeff);
                 int idx = i - ca + an + 1;
-                MatrixXd Bc_s = assembled_B / constant::dt * last_cs.block(idx * particle_dof_size, 0, particle_dof_size, 1);
+                MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(idx * particle_dof_size, 0, particle_dof_size, 1);
                 c_s.block(idx * particle_dof_size, 0, particle_dof_size, 1) =
                 solver_A.solve(Bc_s) - j_coeff * u(2 * pt_size + eff_size + idx, 0);
                 ret = j_coeff(constant::particle_segment);
             } else {
                 int idx = i - ca + an + 1;
-                MatrixXd Bc_s = assembled_B / constant::dt * last_cs.block(idx * particle_dof_size, 0, particle_dof_size, 1);
+                MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(idx * particle_dof_size, 0, particle_dof_size, 1);
                 c_s.block(idx * particle_dof_size, 0, particle_dof_size, 1) =
                 constant_solver.solve(Bc_s) - j_coeff * u(2 * pt_size + eff_size + idx, 0);
             }

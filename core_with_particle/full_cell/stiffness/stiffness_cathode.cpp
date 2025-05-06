@@ -19,7 +19,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
 
     MatrixXd xs = get_integration_point<dim, n>();
     MatrixXd w = get_integration_weight<dim, n>();
-    const double dt = constant::dt;
+    const double dt = this->st->dt_now;
     const double R_p = constant::r_p;
     const double a = 3 * constant::epsilon_s_ca / constant::r_p;
     const double eff_mat = std::pow(constant::epsilon_e_ca, constant::bruggeman);
@@ -337,9 +337,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 double e_qtdu = Ne_q * Ne_t * Ne_du;
                 double e_qdu = Ne_q * Ne_du;
                 // Heat transfer
-                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det
+                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / dt * w(j) * det
                          + lambda * dNdNT * w(j) * det;
-                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det
+                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
                         + lambda * dNdNT * e_t * w(j) * det;
                 if (!is_first_step) {
                     // Q_ohm

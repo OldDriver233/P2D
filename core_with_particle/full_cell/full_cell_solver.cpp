@@ -79,7 +79,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
     cathode_particle.pre_calc(c_s);
     //printf("Step\tIter\tRelTol\tDelta\n");
 
-    while (iter_time < iter && rel_tol > tolerance) {
+    while (iter_time < iter && rel_delta > tolerance) {
         Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size,
                                       2 * point_size + 2 * eff_size + all_size);
         if (!settings::calc_temperature) k.resize(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size);

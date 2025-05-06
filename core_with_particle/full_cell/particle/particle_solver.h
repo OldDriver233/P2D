@@ -9,6 +9,7 @@
 #include "../../integration/integration_shapes.h"
 #include "../../shaping/primitives.h"
 
+class StepControl;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
@@ -25,8 +26,9 @@ public:
     const double D_s;
     const double D_sref;
     const double c_max;
+    StepControl* step_control;
 
-    particle_solver(const VectorXd& coord, const double D_s, const double c_max): point_coord(coord), D_s(D_s), D_sref(D_s), c_max(c_max) {
+    particle_solver(const VectorXd& coord, const double D_s, const double c_max, StepControl* st): point_coord(coord), D_s(D_s), D_sref(D_s), c_max(c_max), step_control(st) {
         const int dim = 1, n = 2;
         const double R_s = constant::r_p;
         int pt_size = coord.size();

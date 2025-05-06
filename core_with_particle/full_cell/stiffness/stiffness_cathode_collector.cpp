@@ -32,9 +32,9 @@ void stiffness_cathode_collector::generate(const Eigen::Ref<MatrixXd> &u,
             double det = cached_det_J[i * n + j];
             double s = xs(j);
 
-            e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / constant::dt * w(j) * det 
+            e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / st->dt_now * w(j) * det
                      + lambda * dNdNT * w(j) * det;
-            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / constant::dt * w(j) * det 
+            e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / st->dt_now * w(j) * det
                     + lambda * dNdNT * e_t * w(j) * det 
                     - I_app * I_app * constant::l_ref * constant::l_ref / sigma * N * w(j) * det;
         }

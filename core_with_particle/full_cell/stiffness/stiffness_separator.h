@@ -6,19 +6,22 @@
 #include <eigen3/Eigen/Sparse>
 #include <utility>
 
+#include "../../step_control/StepControl.h"
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 class stiffness_separator : public stiffness_base {
 public:
     FunctionManager *pfm;
+    StepControl* st;
 
     stiffness_separator() {
     }
 
     stiffness_separator(VectorXd points, int an, int ca, int ancoll, int cacoll,
-                        FunctionManager *pf)
-        : stiffness_base(std::move(points), an, ca, ancoll, cacoll), pfm(pf) {
+                        FunctionManager *pf, StepControl* st)
+        : stiffness_base(std::move(points), an, ca, ancoll, cacoll), pfm(pf), st(st) {
     }
 
     ~stiffness_separator() {

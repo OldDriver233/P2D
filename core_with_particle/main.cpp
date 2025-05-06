@@ -33,7 +33,8 @@ void calc_cell() {
     int all_size = coord.size();
     constant::read();
     MatrixXd particle_coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
-    auto s = full_cell_solver(an, ca, ancoll, cacoll, coord, particle_coord);
+    StepControl step_control;
+    auto s = full_cell_solver(an, ca, ancoll, cacoll, coord, particle_coord, &step_control);
     VectorXd u;
     if (settings::calc_temperature) u = MatrixXd::Zero(2 * pt_size + 2 * eff_size + all_size, 1);
     else u = MatrixXd::Zero(2 * pt_size + 2 * eff_size, 1);
@@ -79,8 +80,9 @@ void calc_cell() {
     output_manager voltage(MatrixXd::Zero(1, 1));
     if (!settings::use_adaptive_time_step) {
         for (int i = 0; i <= constant::step; i++) {
+            step_control.dt_now = constant::dt;
             s.calc(u, c_s, i * constant::dt, false);
-            if (i * constant::dt - s.next_detail_time > -0.001) {
+            if (i * constant::dt - s.step_control->next_output > -0.001) {
                 phi_l.append(u(Eigen::seq(0, pt_size - 1)), constant::dt * i);
                 c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), constant::dt * i);
                 phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), constant::dt * i);
@@ -107,114 +109,114 @@ void calc_cell() {
                 voltage.append(MatrixXd::Ones(1, 1) * (u(2 * pt_size + eff_size - 1) - u(2 * pt_size)),
                                constant::dt * i);
                 s.print_detail();
-                s.next_detail_time += constant::output_interval;
+                s.step_control->next_output += constant::output_interval;
             }
         }
     } else {
-        double current_time = 0.0;
-        double max_dt = constant::output_interval;
-        double cur_dt = max_dt;
-        const int max_depth = 100;
-        const double thres = 0.1;
-        VectorXd mock_u;
-        MatrixXd mock_c_s;
-        VectorXd mock_u_2;
-        MatrixXd mock_c_s_2;
-
         s.calc(u, c_s, 0, false);
-        phi_l.append(u(Eigen::seq(0, pt_size - 1)), current_time);
-        c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), current_time);
-        phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), current_time);
+        phi_l.append(u(Eigen::seq(0, pt_size - 1)), 0);
+        c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), 0);
+        phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), 0);
         phi_s_positive.append(u(Eigen::seq(2 * pt_size + (an - ancoll) + 1, 2 * pt_size + eff_size - 1)),
-                              current_time);
+                              0);
         j_negative.append(u(Eigen::seq(2 * pt_size + eff_size, 2 * pt_size + eff_size + (an - ancoll)))
                           * constant::F * 3 * constant::epsilon_s_an / constant::r_p * constant::j_ref,
-                          current_time);
+                          0);
         j_positive.append(
             u(Eigen::seq(2 * pt_size + eff_size + (an - ancoll) + 1, 2 * pt_size + 2 * eff_size - 1))
-            * constant::F * 3 * constant::epsilon_s_ca / constant::r_p * constant::j_ref, current_time);
+            * constant::F * 3 * constant::epsilon_s_ca / constant::r_p * constant::j_ref, 0);
         css_negative.append(c_s(
                                 Eigen::seq(constant::particle_segment,
                                            (an - ancoll + 1) * (constant::particle_segment + 1),
-                                           constant::particle_segment + 1), 0), current_time);
+                                           constant::particle_segment + 1), 0), 0);
         css_positive.append(c_s(
                                 Eigen::seq(
                                     (an - ancoll + 1) * (constant::particle_segment + 1) +
                                     constant::particle_segment,
                                     eff_size * (constant::particle_segment + 1),
-                                    constant::particle_segment + 1), 0), current_time);
+                                    constant::particle_segment + 1), 0), 0);
         if (settings::calc_temperature)
-            temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), current_time);
+            temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), 0);
         voltage.append(MatrixXd::Ones(1, 1) * (u(2 * pt_size + eff_size - 1) - u(2 * pt_size)),
-                       current_time);
+                       0);
         s.print_detail();
-        s.next_detail_time += constant::output_interval;
-        while (current_time < constant::finish_time) {
-            double diff_norm = 1e10;
-            int depth = 0;
-            double supposed_dt = std::min(cur_dt, std::min(max_dt, s.next_detail_time - current_time));
-            double actual_dt = 0.0;
-            while (diff_norm >= thres && depth <= max_depth) {
-                mock_u = u;
-                mock_c_s = c_s;
-                mock_u_2 = u;
-                mock_c_s_2 = c_s;
-                actual_dt = supposed_dt;
 
-                constant::dt = actual_dt;
-                s.calc(mock_u, mock_c_s, current_time + actual_dt, false);
-
-                constant::dt = actual_dt / 2;
-                s.calc(mock_u_2, mock_c_s_2, current_time + actual_dt / 2, false);
-                s.calc(mock_u_2, mock_c_s_2, current_time + actual_dt, false);
-
-                diff_norm = (mock_u - mock_u_2).norm();
-                std::cout << diff_norm << std::endl;
-                depth++;
-                supposed_dt /= 2.0;
+        step_control.update_solution(u, c_s, 1);
+        step_control.next_output = constant::output_interval;
+        while (step_control.prev_time < constant::finish_time) {
+            s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+            step_control.update_solution(u, c_s, 0);
+            //if (s.step == 100) {
+            //    std::cout<<step_control.u_hist[1] - step_control.u_hist[0]<<std::endl;
+            //}
+            step_control.update_dt();
+            while (step_control.status == StepStatus::NeedRecalc) {
+                u = step_control.u_hist[1];
+                c_s = step_control.c_s_hist[1];
+                s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+                step_control.update_solution(u, c_s, 0);
+                step_control.update_dt();
             }
-            if (depth > max_depth) {
-                std::cerr << "Convergence failed" << std::endl;
-                exit(1);
-            } else if (depth != 1) {
-                cur_dt = actual_dt;
-            } else {
-                cur_dt = std::min(max_dt, actual_dt * 2);
-            }
-            u = mock_u_2;
-            c_s = mock_c_s_2;
-            current_time += actual_dt;
-            if (current_time - s.next_detail_time > -0.001) {
-                phi_l.append(u(Eigen::seq(0, pt_size - 1)), current_time);
-                c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), current_time);
-                phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), current_time);
+            std::cout<<step_control.prev_time<<" "<<step_control.dt_proposed<<std::endl;
+            if (step_control.status == StepStatus::ToNextOutput) {
+                phi_l.append(u(Eigen::seq(0, pt_size - 1)), step_control.next_output);
+                c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), step_control.next_output);
+                phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), step_control.next_output);
                 phi_s_positive.append(u(Eigen::seq(2 * pt_size + (an - ancoll) + 1, 2 * pt_size + eff_size - 1)),
-                                      current_time);
+                                      step_control.next_output);
                 j_negative.append(u(Eigen::seq(2 * pt_size + eff_size, 2 * pt_size + eff_size + (an - ancoll)))
                                   * constant::F * 3 * constant::epsilon_s_an / constant::r_p * constant::j_ref,
-                                  current_time);
+                                  step_control.next_output);
                 j_positive.append(
                     u(Eigen::seq(2 * pt_size + eff_size + (an - ancoll) + 1, 2 * pt_size + 2 * eff_size - 1))
-                    * constant::F * 3 * constant::epsilon_s_ca / constant::r_p * constant::j_ref, current_time);
+                    * constant::F * 3 * constant::epsilon_s_ca / constant::r_p * constant::j_ref, step_control.next_output);
                 css_negative.append(c_s(
                                         Eigen::seq(constant::particle_segment,
                                                    (an - ancoll + 1) * (constant::particle_segment + 1),
-                                                   constant::particle_segment + 1), 0), current_time);
+                                                   constant::particle_segment + 1), 0), step_control.next_output);
                 css_positive.append(c_s(
                                         Eigen::seq(
                                             (an - ancoll + 1) * (constant::particle_segment + 1) +
                                             constant::particle_segment,
                                             eff_size * (constant::particle_segment + 1),
-                                            constant::particle_segment + 1), 0), current_time);
+                                            constant::particle_segment + 1), 0), step_control.next_output);
                 if (settings::calc_temperature)
-                    temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), current_time);
+                    temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), step_control.next_output);
                 voltage.append(MatrixXd::Ones(1, 1) * (u(2 * pt_size + eff_size - 1) - u(2 * pt_size)),
-                               current_time);
+                               step_control.next_output);
                 s.print_detail();
-                s.next_detail_time += constant::output_interval;
+                step_control.next_output += constant::output_interval;
             }
-            std::cout << cur_dt << std::endl;
+            step_control.step_forward();
         }
+        if (step_control.status == StepStatus::ToNextOutput) {
+                phi_l.append(u(Eigen::seq(0, pt_size - 1)), step_control.next_output);
+                c_l.append(u(Eigen::seq(pt_size, 2 * pt_size - 1)), step_control.next_output);
+                phi_s_negative.append(u(Eigen::seq(2 * pt_size, 2 * pt_size + (an - ancoll))), step_control.next_output);
+                phi_s_positive.append(u(Eigen::seq(2 * pt_size + (an - ancoll) + 1, 2 * pt_size + eff_size - 1)),
+                                      step_control.next_output);
+                j_negative.append(u(Eigen::seq(2 * pt_size + eff_size, 2 * pt_size + eff_size + (an - ancoll)))
+                                  * constant::F * 3 * constant::epsilon_s_an / constant::r_p * constant::j_ref,
+                                  step_control.next_output);
+                j_positive.append(
+                    u(Eigen::seq(2 * pt_size + eff_size + (an - ancoll) + 1, 2 * pt_size + 2 * eff_size - 1))
+                    * constant::F * 3 * constant::epsilon_s_ca / constant::r_p * constant::j_ref, step_control.next_output);
+                css_negative.append(c_s(
+                                        Eigen::seq(constant::particle_segment,
+                                                   (an - ancoll + 1) * (constant::particle_segment + 1),
+                                                   constant::particle_segment + 1), 0), step_control.next_output);
+                css_positive.append(c_s(
+                                        Eigen::seq(
+                                            (an - ancoll + 1) * (constant::particle_segment + 1) +
+                                            constant::particle_segment,
+                                            eff_size * (constant::particle_segment + 1),
+                                            constant::particle_segment + 1), 0), step_control.next_output);
+                if (settings::calc_temperature)
+                    temp.append(MatrixXd::Ones(1, 1) * u(2 * pt_size + 2 * eff_size), step_control.next_output);
+                voltage.append(MatrixXd::Ones(1, 1) * (u(2 * pt_size + eff_size - 1) - u(2 * pt_size)),
+                               step_control.next_output);
+                s.print_detail();
+            }
     }
     phi_l.write_to_csv("output/phi_l.csv");
     c_l.write_to_csv("output/c_l.csv");
