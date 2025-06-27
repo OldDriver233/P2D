@@ -1,5 +1,6 @@
 #include "particle_solver.h"
 
+#include "../../io/settings/settings.h"
 #include "../../step_control/StepControl.h"
 
 void particle_solver::pre_calc(const Eigen::Ref<MatrixXd> &c_s) {
@@ -14,7 +15,13 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
     if(type == 1) {
         for(int i = 0; i <= an; i++) {
             if constexpr (!constant_matrix) {
-                double coeff = exp(constant::diffuse_energy_an / constant::R * (-1 / u(temp + i, 0) + 1 / constant::t_ref));
+                double T;
+                if (settings::calc_temperature) {
+                    T = u(temp + i, 0);
+                } else {
+                    T = constant::t_ref;
+                }
+                double coeff = exp(constant::diffuse_energy_an / constant::R * (-1 / T + 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                 solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                 j_coeff = solver_A.solve(pre_j_coeff);
@@ -31,7 +38,13 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
     } else {
         for(int i = ca; i < pt_size; i++) {
             if constexpr (!constant_matrix) {
-                double coeff = exp(constant::diffuse_energy_ca / constant::R * (-1 / u(temp + i, 0) + 1 / constant::t_ref));
+                double T;
+                if (settings::calc_temperature) {
+                    T = u(temp + i, 0);
+                } else {
+                    T = constant::t_ref;
+                }
+                double coeff = exp(constant::diffuse_energy_ca / constant::R * (-1 / T + 1 / constant::t_ref));
                 Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                 solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                 j_coeff = solver_A.solve(pre_j_coeff);

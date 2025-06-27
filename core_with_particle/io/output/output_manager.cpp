@@ -11,6 +11,7 @@ void output_manager::write_to_csv(const std::string &filename) {
     if (!f) {
         //throw std::runtime_error("Cannot open file " + filename);
     }
+    f<<std::setprecision(10);
 
     f<<"Coord";
     for (auto i = 0; i < coord.size(); i++) {

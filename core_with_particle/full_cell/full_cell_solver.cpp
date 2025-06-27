@@ -113,7 +113,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         u += delta;
 
         if (step != 0) {
-            if (settings::calc_temperature) {
+            if (settings::calc_temperature || settings::use_adaptive_time_step) {
                 double j1, j2;
                 j1 = -anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
                 j2 = -cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
