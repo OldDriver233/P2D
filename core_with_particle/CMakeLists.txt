@@ -68,6 +68,10 @@ add_executable(fem main.cpp
         io/output/output_manager.h
         io/output/output_manager.cpp
         step_control/StepControl.cpp
+        mesh/mesh_reader.cpp
+        mesh/mesh_reader.h
+        mesh/dof_assigner.cpp
+        mesh/dof_assigner.h
 )
 
 if (USE_MKL)
@@ -89,15 +93,16 @@ find_library(HIREDIS_LIB hiredis)
 if(NOT IS_MACOS)
 target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so")
 else()
-        execute_process(COMMAND /opt/homebrew/Cellar/llvm/20.1.2/bin/llvm-config --cxxflags --ldflags --system-libs --libs core
+        execute_process(COMMAND /opt/homebrew/Cellar/llvm/20.1.6/bin/llvm-config --cxxflags --ldflags --system-libs --libs core
                 COMMAND tr "\n" " "
                 OUTPUT_VARIABLE flags)
 
         set(CMAKE_CXX_FLAGS "${flags} ${CMAKE_CXX_FLAGS}")
-        include_directories("/opt/homebrew/Cellar/llvm/20.1.2/include")
+        include_directories("/opt/homebrew/Cellar/llvm/20.1.6/include")
         include_directories("/opt/homebrew/include")
+        target_link_directories(fem PRIVATE "/opt/homebrew/lib")
         target_link_options(fem PRIVATE -framework Accelerate /opt/homebrew/opt/lapack/lib/liblapacke.dylib)
-        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB})
+        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libgmsh.dylib")
 endif()
 
 install(TARGETS fem DESTINATION .)

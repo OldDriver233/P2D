@@ -36,13 +36,16 @@ public:
       MatrixXd coords(1, n);
       coords << points(i), points(i + 1);
       for (auto j = 0; j < n; j++) {
-        N = get_shape_func_at<dim, n>(x(j));
-        auto dNds = get_shape_deriv_at<dim, n>(x(j));
+        // Gets subunit and derivative wrt local coordinate
+        N = get_shape_func_at<dim, n>(x.row(j).transpose());
+        auto dNds = get_shape_deriv_at<dim, n>(x.row(j).transpose());
 
-        // NOTE: 1D situation, J is 1x1
+        /*
+         * coords is [x1; x2; ... xn]
+         */
         auto J = coords * dNds;
         double det_J = J.determinant();
-        dN = dNds / det_J;
+        dN = dNds * J.inverse();
 
         this->cached_matrix_N.push_back(N);
         this->cached_matrix_dN.push_back(dN);

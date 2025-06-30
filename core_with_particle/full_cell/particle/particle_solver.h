@@ -56,11 +56,11 @@ public:
             MatrixXd e_a_2 = MatrixXd::Zero(n, n);
             MatrixXd e_b = MatrixXd::Zero(n, n);
             for(int j = 0; j < n; j++) {
-                MatrixXd N = get_shape_func_at<dim, n>(xs(j));
-                VectorXd dNds = get_shape_deriv_at<dim, n>(xs(j));
+                MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
+                VectorXd dNds = get_shape_deriv_at<dim, n>(xs.row(j).transpose());
                 VectorXd J = coords * dNds;
                 double det_J = J.determinant();
-                MatrixXd dN = dNds / det_J;
+                MatrixXd dN = dNds * J.inverse();
                 MatrixXd N_T = N.transpose();
                 MatrixXd dN_T = dN.transpose();
 
