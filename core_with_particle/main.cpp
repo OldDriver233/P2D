@@ -2,7 +2,8 @@
 #include "constants/constant.h"
 #include "functions/functions.h"
 #include "full_cell/full_cell_solver.h"
-#include "full_cell/particle/particle_solver.h"
+#include "mesh/mesh_reader.h"
+#include "mesh/dof_assigner.h"
 #include "io/coord_reader.h"
 #include "io/redis_connector.h"
 #include "io/settings/settings.h"
@@ -25,7 +26,97 @@ std::time_t get_timestamp() {
     return timestamp;
 }
 
+void calc_cell_v2() {
+    settings::read("settings.json");
+    constant::read();
+    mesh_reader mesh("mesh.msh");
+    dof_assigner dof;
+    dof.gen_dof(mesh);
+    VectorXd particle_coord = VectorXd::LinSpaced(constant::particle_segment + 1, 0.0, 1.0);
+    StepControl step_control;
+    full_cell_solver s(mesh, dof, particle_coord, &step_control);
+    int eff_size = mesh.anode_nodes.size() + mesh.cathode_nodes.size();
+    VectorXd u = VectorXd::Zero(dof.dof_cnt);
+    MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
+    for (int i = 0; i < mesh.node_count; i++) {
+        if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an);
+            u(dof.get_dof(i, 1)) = 1;
+            if (mesh.anode_nodes.contains(i)) {
+                u(dof.get_dof(i, 2)) = 0;
+            } else if (mesh.cathode_nodes.contains(i)) {
+                u(dof.get_dof(i, 2)) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(
+                                           constant::c_int_an / constant::c_max_an);
+            }
+        }
+        if (settings::calc_temperature) {
+            u(dof.get_dof(i, 4)) = constant::t_ref;
+        }
+    } {
+        int i = 0;
+        for (auto x: dof.particle_to_node) {
+            if (mesh.anode_nodes.contains(i)) {
+                for (int j = 0; j < constant::particle_segment + 1; j++) {
+                    c_s(i * (constant::particle_segment + 1) + j) = constant::c_int_an / constant::c_max_an;
+                }
+            } else {
+                for (int j = 0; j < constant::particle_segment + 1; j++) {
+                    c_s(i * (constant::particle_segment + 1) + j) = constant::c_int_ca / constant::c_max_ca;
+                }
+            }
+            i++;
+        }
+    }
+    output_manager voltage(MatrixXd::Zero(1, 1));
+    if (!settings::use_adaptive_time_step) {
+        for (int i = 0; i <= constant::step; i++) {
+            step_control.dt_now = constant::dt;
+            s.calc(u, c_s, i * constant::dt, false);
+            if (i * constant::dt - s.step_control->next_output > -0.001) {
+                voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
+                               constant::dt * i);
+                s.print_detail();
+                s.step_control->next_output += constant::output_interval;
+            }
+        }
+    } else {
+        s.calc(u, c_s, 0, false);
+        voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
+                       0);
+        s.print_detail();
+
+        step_control.update_solution(u, c_s, 1);
+        step_control.next_output = constant::output_interval;
+        while (step_control.prev_time < constant::finish_time) {
+            s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+            step_control.update_solution(u, c_s, 0);
+            step_control.update_dt();
+            while (step_control.status == StepStatus::NeedRecalc) {
+                u = step_control.u_hist[1];
+                c_s = step_control.c_s_hist[1];
+                s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+                step_control.update_solution(u, c_s, 0);
+                step_control.update_dt();
+            }
+            std::cout << step_control.prev_time << " " << step_control.dt_proposed << std::endl;
+            if (step_control.status == StepStatus::ToNextOutput) {
+                voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
+                               step_control.next_output);
+                s.print_detail();
+                step_control.next_output += constant::output_interval;
+            }
+            step_control.step_forward();
+        }
+        if (step_control.status == StepStatus::ToNextOutput) {
+            voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
+                           step_control.next_output);
+            s.print_detail();
+        }
+    }
+}
+
 void calc_cell() {
+    /*
     settings::read("settings.json");
     auto [coord, an, ca, ancoll, cacoll] = coord_reader();
     int pt_size = cacoll - ancoll + 1;
@@ -229,9 +320,10 @@ void calc_cell() {
     s.eta.write_to_csv("output/eta.csv");
     css_negative.write_to_csv("output/css_neg.csv");
     css_positive.write_to_csv("output/css_pos.csv");
+    */
 }
 
 int main() {
-    calc_cell();
+    calc_cell_v2();
     //test_particle();
 }

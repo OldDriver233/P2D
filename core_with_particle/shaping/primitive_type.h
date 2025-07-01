@@ -9,7 +9,6 @@ enum class Primitive{
     Tri3,
     Quad4,
 };
-#endif //FEM_PRIMITIVE_TYPE_H
 
 constexpr int get_dim(const Primitive p) {
     switch (p) {
@@ -35,3 +34,5 @@ constexpr int get_nodes(const Primitive p) {
     // Unreachable
     return -1;
 }
+
+#endif //FEM_PRIMITIVE_TYPE_H

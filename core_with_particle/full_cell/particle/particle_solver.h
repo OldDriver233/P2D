@@ -8,6 +8,8 @@
 #include "../../constants/constant.h"
 #include "../../integration/integration_shapes.h"
 #include "../../shaping/primitives.h"
+#include "../../mesh/mesh_reader.h"
+#include "../../mesh/dof_assigner.h"
 
 class StepControl;
 using Eigen::VectorXd;
@@ -94,7 +96,7 @@ public:
 
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
     template <bool constant_matrix>
-    double calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int pt_size, int an, int ca, int type, int temp);
+    double calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int type, const mesh_reader& mesh, const dof_assigner& dof);
 };
 
 #endif //FEM_PARTICLE_SOLVER_H

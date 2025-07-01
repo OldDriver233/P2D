@@ -49,7 +49,6 @@ add_executable(fem main.cpp
         constants/constant.h
         full_cell/full_cell_solver.cpp
         full_cell/full_cell_solver.h
-        full_cell/stiffness/stiffness_base.h
         full_cell/stiffness/stiffness_separator.h
         full_cell/stiffness/stiffness_separator.cpp
         full_cell/stiffness/stiffness_anode.h
@@ -72,6 +71,8 @@ add_executable(fem main.cpp
         mesh/mesh_reader.h
         mesh/dof_assigner.cpp
         mesh/dof_assigner.h
+        full_cell/stiffness/pre_calc.h
+        full_cell/apply_boundary.cpp
 )
 
 if (USE_MKL)

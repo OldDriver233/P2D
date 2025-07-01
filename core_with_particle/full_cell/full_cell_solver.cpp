@@ -9,6 +9,7 @@ inline double clamp(double x, double lower, double upper) {
     return x < lower ? lower : (x > upper ? upper : x);
 }
 
+/*
 void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &k, Eigen::Ref<VectorXd> res,
                                       bool is_first_step) {
     long point_size = this->cacoll - this->ancoll + 1;
@@ -57,20 +58,15 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
             u(2 * point_size + 2 * eff_size + all_size - 1, 0) - constant::t_ref) * constant::l_ref;
     }
 }
+*/
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, double time, bool do_print) {
-    long point_size = this->cacoll - this->ancoll + 1;
-    long eff_size = point_size - (ca - an - 1);
-    long element_cnt = point_size - 1;
-    long all_size = this->point_coord.size();
     int iter_time = 0;
     double first_norm, first_delta_norm;
     double res_norm = 1.0;
     double rel_tol = 1.0;
     double rel_delta = 1.0;
-    MatrixXd du;
-    if (settings::calc_temperature) du = MatrixXd::Zero(2 * point_size + 2 * eff_size + all_size, 1);
-    else du = MatrixXd::Zero(2 * point_size + 2 * eff_size, 1);
+    MatrixXd du = MatrixXd::Zero(dof.dof_cnt, 1);
     std::vector<Eigen::Triplet<double> > coeff;
     //std::vector<double> temp;
     this->current_time = time;
@@ -80,16 +76,10 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
     //printf("Step\tIter\tRelTol\tDelta\n");
 
     while (iter_time < iter && rel_delta > tolerance) {
-        Eigen::SparseMatrix<double> k(2 * point_size + 2 * eff_size + all_size,
-                                      2 * point_size + 2 * eff_size + all_size);
-        if (!settings::calc_temperature) k.resize(2 * point_size + 2 * eff_size, 2 * point_size + 2 * eff_size);
-        VectorXd res;
-        if (settings::calc_temperature) res = VectorXd::Zero(2 * point_size + 2 * eff_size + all_size);
-        else res = VectorXd::Zero(2 * point_size + 2 * eff_size);
+        Eigen::SparseMatrix<double> k(dof.dof_cnt, dof.dof_cnt);
+        VectorXd res(dof.dof_cnt);
         coeff.clear();
-        coeff.reserve(16 * 5 * all_size);
         temp.clear();
-        temp.reserve(3 * point_size);
 
         if (settings::calc_temperature) {
             this->anode.generate<true>(u, du, c_s, coeff, res, step == 0, temp);
@@ -106,8 +96,6 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         apply_boundary(u, k, res, false);
 
         solver.compute(k);
-        //std::cout<<k<<std::endl;
-        //std::cout<<res<<std::endl;
         MatrixXd delta = -solver.solve(res);
         du += delta;
         u += delta;
@@ -115,13 +103,13 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         if (step != 0) {
             if (settings::calc_temperature || settings::use_adaptive_time_step) {
                 double j1, j2;
-                j1 = -anode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-                j2 = -cathode_particle.calc<false>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+                j1 = -anode_particle.calc<false>(c_s, u, 1, mesh, dof);
+                j2 = -cathode_particle.calc<false>(c_s, u, 2, mesh, dof);
                 anode.dc_ssdj = j1;
                 cathode.dc_ssdj = j2;
             } else {
-                anode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 1, 2 * point_size + 2 * eff_size + ancoll);
-                cathode_particle.calc<true>(c_s, u, point_size, an - ancoll, ca - ancoll, 2, 2 * point_size + 2 * eff_size + ancoll);
+                anode_particle.calc<true>(c_s, u, 1, mesh, dof);
+                cathode_particle.calc<true>(c_s, u, 2, mesh, dof);
             }
         }
         double norm = delta.norm();
@@ -141,7 +129,9 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
     step++;
 }
 
+
 void full_cell_solver::print_detail() {
+    /*
     VectorXd q_ohm = VectorXd::Zero(element_coord.size());
     VectorXd q_rxn = VectorXd::Zero(element_coord.size());
     VectorXd q_rev = VectorXd::Zero(element_coord.size());
@@ -156,4 +146,5 @@ void full_cell_solver::print_detail() {
     Q_rxn.append(q_rxn, this->current_time);
     Q_rev.append(q_rev, this->current_time);
     eta.append(v_eta, this->current_time);
+    */
 }
