@@ -34,8 +34,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
                 MatrixXd N = get_shape_func_at<1, 2>(xs.row(j).transpose());
                 MatrixXd dNdu = get_shape_deriv_at<1, 2>(xs.row(j).transpose());
 
-                MatrixXd J = coord * dNdu;
-                MatrixXd dN = dNdu * J.inverse();
+                MatrixXd dN = coord * dNdu;
 
                 double ds = std::hypot(dN(0, 0), dN(1, 0));
 

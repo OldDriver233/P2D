@@ -77,7 +77,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
 
     while (iter_time < iter && rel_delta > tolerance) {
         Eigen::SparseMatrix<double> k(dof.dof_cnt, dof.dof_cnt);
-        VectorXd res(dof.dof_cnt);
+        VectorXd res = VectorXd::Zero(dof.dof_cnt);
         coeff.clear();
         temp.clear();
 

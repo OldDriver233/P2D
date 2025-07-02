@@ -1,4 +1,7 @@
 #include "dof_assigner.h"
+
+#include <iostream>
+
 #include "../io/settings/settings.h"
 
 void dof_assigner::gen_dof(const mesh_reader &mesh) {
@@ -39,6 +42,7 @@ std::size_t dof_assigner::get_dof(std::size_t node_id, std::size_t variable_id) 
     if (settings::calc_temperature) {
         return dof_container[5 * node_id + variable_id];
     } else {
+        std::size_t dof = dof_container[4 * node_id + variable_id];
         return dof_container[4 * node_id + variable_id];
     }
 }

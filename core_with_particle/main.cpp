@@ -55,7 +55,7 @@ void calc_cell_v2() {
     } {
         int i = 0;
         for (auto x: dof.particle_to_node) {
-            if (mesh.anode_nodes.contains(i)) {
+            if (mesh.anode_nodes.contains(x)) {
                 for (int j = 0; j < constant::particle_segment + 1; j++) {
                     c_s(i * (constant::particle_segment + 1) + j) = constant::c_int_an / constant::c_max_an;
                 }
@@ -113,6 +113,7 @@ void calc_cell_v2() {
             s.print_detail();
         }
     }
+    voltage.write_to_csv("output/voltage.csv");
 }
 
 void calc_cell() {

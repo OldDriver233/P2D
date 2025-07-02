@@ -41,7 +41,6 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     double eff_1 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
     const double rho = constant::density_sep, cap = constant::capacity_sep, lambda = constant::lambda_sep;
 
-    const int simd_size = mesh.separator_nodes.size();
     std::vector<double> arr_kappa(n * mesh.separator_elements.size());
     std::vector<double> arr_d_kappa(n * mesh.separator_elements.size());
     std::vector<double> arr_d_eff(n * mesh.separator_elements.size());
@@ -52,6 +51,12 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         for (auto e: mesh.separator_elements) {
             MatrixXd e_c(n, 1);
             MatrixXd e_t(n, 1);
+
+            for (int j = 0; j < n; j++) {
+                int node_id = mesh.elements[e * n + j];
+                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+                e_t(j) = u(dof.get_dof(node_id, 4), 0);
+            }
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
@@ -67,6 +72,10 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         int i = 0;
         for (auto e: mesh.separator_elements) {
             MatrixXd e_c(n, 1);
+            for (int j = 0; j < n; j++) {
+                int node_id = mesh.elements[e * n + j];
+                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+            }
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
@@ -144,7 +153,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         for (int j = 0; j < n; j++) {
             const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
             const MatrixXd &dN = shapes.cached_matrix_dN[e * n + j];
-            const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
+            //const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
             const MatrixXd &NNT = shapes.cached_matrix_NNT[e * n + j];
             const MatrixXd &dNdNT = shapes.cached_matrix_dNdNT[e * n + j];
             MatrixXd N_T = N.transpose();

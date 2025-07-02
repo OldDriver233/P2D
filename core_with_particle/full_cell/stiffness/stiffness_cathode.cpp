@@ -50,7 +50,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     const double ce_root = std::sqrt(ce_int);
     const double rho = constant::density_ca, cap = constant::capacity_ca, lambda = constant::lambda_ca;
 
-    const int simd_size = mesh.anode_nodes.size();
+    const int simd_size = mesh.cathode_nodes.size();
 
     double *kqp = new double[simd_size];
     double *kqc = new double[simd_size];
@@ -87,29 +87,29 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         }
         c_ss[i] = c_s((dof.particle_mapper[x] + 1) * (particle_elem_cnt + 1) - 1, 0);
 
-        arr_j0[i] = j0<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
-        arr_d_j0_a[i] = d_j0_a<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
-        arr_d_j0_e[i] = d_j0_e<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
+        arr_j0[i] = j0<2>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
+        arr_d_j0_a[i] = d_j0_a<2>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
+        arr_d_j0_e[i] = d_j0_e<2>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
         i++;
     }
     if (!settings::use_customize_uoc) {
-        i = 0;
+        int i = 0;
         for (auto x: mesh.cathode_nodes) {
             double t = constant::T;
             if (settings::calc_temperature) {
                 t = u_ptr[dof.get_dof(x, 4)];
             }
 
-            arr_uoc[i] = uoc<1>(c_ss[i]);
+            arr_uoc[i] = uoc<2>(c_ss[i]);
             arr_eta[i] = u_ptr[dof.get_dof(x, 2)] - u_ptr[dof.get_dof(x, 0)] - arr_uoc[i];
-            arr_d_uoc[i] = d_uoc<1>(c_ss[i]);
+            arr_d_uoc[i] = d_uoc<2>(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i], t);
             arr_d_bv[i] = d_bv(arr_eta[i], t);
             arr_du[i] = arr_d_uoc[i] / c_max;
             i++;
         }
     } else {
-        i = 0;
+        int i = 0;
         for (auto x: mesh.cathode_nodes) {
             double t = constant::T;
             if (settings::calc_temperature) {
@@ -139,9 +139,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
-                double ele_c_e = t_mat.sum();
+                double ele_c_e = t_mat.value();
                 t_mat = N.transpose() * e_t;
-                double ele_c_t = t_mat.sum();
+                double ele_c_t = t_mat.value();
                 vars(i * n + j, 0) = ele_c_e * ce_int;
                 vars(i * n + j, 1) = ele_c_t;
             }
@@ -158,7 +158,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
-                double ele_c_e = t_mat.sum();
+                double ele_c_e = t_mat.value();
                 vars(i * n + j, 0) = ele_c_e * ce_int;
                 vars(i * n + j, 1) = constant::T;
             }
@@ -187,7 +187,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     if (!settings::use_customize_diffuse) {
         for (int i = 0; i < mesh.cathode_elements.size(); ++i) {
             for (int j = 0; j < n; j++) {
-                arr_d_eff[i * n + j] = constant::de_an / d_ref * eff_mat;
+                arr_d_eff[i * n + j] = constant::de_ca / d_ref * eff_mat;
             }
         }
     } else {
@@ -254,9 +254,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
             e_ds(j, 0) = du(dof.get_dof(node_id, 2), 0);
             if constexpr (use_temp) {
-                e_t(j, 0) = du(dof.get_dof(node_id, 4), 0);
+                e_dt(j, 0) = du(dof.get_dof(node_id, 4), 0);
             } else {
-                e_t(j, 0) = 0;
+                e_dt(j, 0) = 0;
             }
         }
 
@@ -281,7 +281,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         for (int j = 0; j < n; j++) {
             const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
             const MatrixXd &dN = shapes.cached_matrix_dN[e * n + j];
-            const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
+            //const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
             const MatrixXd &NNT = shapes.cached_matrix_NNT[e * n + j];
             const MatrixXd &dNdNT = shapes.cached_matrix_dNdNT[e * n + j];
             MatrixXd N_T = N.transpose();
@@ -338,6 +338,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 e_eta(l, 0) = arr_eta[mesh.node_to_idx[mesh.elements[e * n + l]]];
             }
             double Ne_eta = (N_T * e_eta).sum();
+            /*
             if constexpr (use_temp) {
                 MatrixXd e_du(n, 1);
                 for (int l = 0; l < n; l++) {
@@ -393,6 +394,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 temp.push_back(0);
                 temp.push_back(Ne_eta);
             }
+            */
         }
 
         for (int j = 0; j < n; j++) {

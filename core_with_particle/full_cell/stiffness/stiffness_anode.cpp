@@ -259,9 +259,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
             e_ds(j, 0) = du(dof.get_dof(node_id, 2), 0);
             if constexpr (use_temp) {
-                e_t(j, 0) = du(dof.get_dof(node_id, 4), 0);
+                e_dt(j, 0) = du(dof.get_dof(node_id, 4), 0);
             } else {
-                e_t(j, 0) = 0;
+                e_dt(j, 0) = 0;
             }
         }
 
@@ -286,7 +286,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         for (int j = 0; j < n; j++) {
             const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
             const MatrixXd &dN = shapes.cached_matrix_dN[e * n + j];
-            const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
+            //const MatrixXd &NdNT = shapes.cached_matrix_NdNT[e * n + j];
             const MatrixXd &NNT = shapes.cached_matrix_NNT[e * n + j];
             const MatrixXd &dNdNT = shapes.cached_matrix_dNdNT[e * n + j];
             MatrixXd N_T = N.transpose();
@@ -343,6 +343,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 e_eta(l, 0) = arr_eta[mesh.node_to_idx[mesh.elements[e * n + l]]];
             }
             double Ne_eta = (N_T * e_eta).sum();
+            /*
             if constexpr (use_temp) {
                 MatrixXd e_du(n, 1);
                 for (int l = 0; l < n; l++) {
@@ -398,6 +399,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 temp.push_back(0);
                 temp.push_back(Ne_eta);
             }
+            */
         }
 
         for (int j = 0; j < n; j++) {
@@ -411,7 +413,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
                 if (!is_first_step) t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 3), e_kcq(j, l));
 
-                if (!mesh.anode_wall_nodes.contains(id_l) && !mesh.anode_wall_nodes.contains(id_r)) {
+                if (!mesh.anode_wall_nodes.contains(id_l) || !mesh.anode_wall_nodes.contains(id_r)) {
                     t.emplace_back(dof.get_dof(id_l, 2), dof.get_dof(id_r, 2), e_kss(j, l));
                     t.emplace_back(dof.get_dof(id_l, 2), dof.get_dof(id_r, 3), e_ksq(j, l));
                 }
