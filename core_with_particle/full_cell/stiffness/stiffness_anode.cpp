@@ -144,9 +144,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
-                double ele_c_e = t_mat.sum();
+                double ele_c_e = t_mat.value();
                 t_mat = N.transpose() * e_t;
-                double ele_c_t = t_mat.sum();
+                double ele_c_t = t_mat.value();
                 vars(i * n + j, 0) = ele_c_e * ce_int;
                 vars(i * n + j, 1) = ele_c_t;
             }
@@ -163,7 +163,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
                 MatrixXd t_mat = N.transpose() * e_c;
-                double ele_c_e = t_mat.sum();
+                double ele_c_e = t_mat.value();
                 vars(i * n + j, 0) = ele_c_e * ce_int;
                 vars(i * n + j, 1) = constant::T;
             }
@@ -293,9 +293,9 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             MatrixXd dN_T = dN.transpose();
             double det = shapes.cached_det_J[e * n + j];
             MatrixXd t_mat = N_T * e_c;
-            double ele_c_e = t_mat.sum();
+            double ele_c_e = t_mat.value();
             t_mat = N.transpose() * e_t;
-            double ele_c_t = t_mat.sum();
+            double ele_c_t = t_mat.value();
 
             double k_ref = constant::k_ref;
             double k_eff = arr_kappa[i * n + j];
@@ -413,7 +413,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
                 if (!is_first_step) t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 3), e_kcq(j, l));
 
-                if (!mesh.anode_wall_nodes.contains(id_l) || !mesh.anode_wall_nodes.contains(id_r)) {
+                if (!mesh.anode_wall_nodes.contains(id_l) && !mesh.anode_wall_nodes.contains(id_r)) {
                     t.emplace_back(dof.get_dof(id_l, 2), dof.get_dof(id_r, 2), e_kss(j, l));
                     t.emplace_back(dof.get_dof(id_l, 2), dof.get_dof(id_r, 3), e_ksq(j, l));
                 }

@@ -288,9 +288,9 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             MatrixXd dN_T = dN.transpose();
             double det = shapes.cached_det_J[e * n + j];
             MatrixXd t_mat = N_T * e_c;
-            double ele_c_e = t_mat.sum();
+            double ele_c_e = t_mat.value();
             t_mat = N.transpose() * e_t;
-            double ele_c_t = t_mat.sum();
+            double ele_c_t = t_mat.value();
 
             double k_ref = constant::k_ref;
             double k_eff = arr_kappa[i * n + j];

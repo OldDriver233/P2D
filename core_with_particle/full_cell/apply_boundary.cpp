@@ -2,7 +2,7 @@
 
 void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatrix<double> &K, Eigen::Ref<VectorXd> res,
                                       bool is_first_step) {
-    const int dim = get_dim(mesh.p_type), n = get_dim(mesh.p_type);
+    const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type);
     for (auto x: mesh.anode_wall_nodes) {
         std::size_t dof_id = dof.get_dof(x, 2);
         K.insert(dof_id, dof_id) = 1;
@@ -26,7 +26,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         for (int i = 0; i < elem_count; i++) {
             MatrixXd coord(2, 2);
 
-            VectorXd i_rel(2);
+            VectorXd i_rel = VectorXd::Zero(2);
             for (int j = 0; j < 2; j++) {
                 coord.col(j) = mesh.coord.col(mesh.cathode_wall[i * 2 + j]);
             }

@@ -2,6 +2,7 @@
 #define PRE_CALC_H
 #include <vector>
 #include <Eigen/Dense>
+#include <iostream>
 
 #include "../../integration/integration_shapes.h"
 #include "../../mesh/mesh_reader.h"

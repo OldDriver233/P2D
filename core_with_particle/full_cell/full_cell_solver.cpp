@@ -97,7 +97,6 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
 
         solver.compute(k);
         MatrixXd delta = -solver.solve(res);
-        //std::cout<<delta.transpose()<<std::endl;
         du += delta;
         u += delta;
 
