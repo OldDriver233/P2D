@@ -18,7 +18,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         for (auto x: mesh.cathode_wall_nodes) {
             res(dof.get_dof(x, 2)) += constant::I_app * constant::l_ref / sigma_ref_ca;
         }
-    } else {
+    } else if (dim == 2) {
         MatrixXd xs = get_integration_point<1, 2>();
         MatrixXd w = get_integration_weight<1, 2>();
         int elem_count = mesh.cathode_wall.size() / 2;

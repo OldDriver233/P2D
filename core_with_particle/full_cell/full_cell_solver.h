@@ -29,6 +29,7 @@ public:
     const int iter = 10;
     const double tolerance = constant::tolerance;
     //int an, ca, ancoll, cacoll;
+    particle_solver anode_particle, cathode_particle;
     stiffness_separator sep;
     stiffness_anode anode;
     stiffness_cathode cathode;
@@ -37,7 +38,6 @@ public:
     int step = 0;
     double current_time = 0.0;
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-    particle_solver anode_particle, cathode_particle;
     FunctionManager manager;
     //output_manager Q_ohm, Q_rxn, Q_rev;
     //output_manager eta;
@@ -50,7 +50,7 @@ public:
         anode_particle(particle_coord, constant::ds_an, constant::c_max_an, st),
         cathode_particle(particle_coord, constant::ds_ca, constant::c_max_ca, st),
         anode(mesh, dof, shapes, -anode_particle.j_coeff(constant::particle_segment), &manager, st),
-        cathode(mesh, dof, shapes, -anode_particle.j_coeff(constant::particle_segment), &manager, st),
+        cathode(mesh, dof, shapes, -cathode_particle.j_coeff(constant::particle_segment), &manager, st),
         sep(mesh, dof, shapes, &manager, st),
         anode_collector(mesh, dof, shapes, st),
         cathode_collector(mesh, dof, shapes, st),

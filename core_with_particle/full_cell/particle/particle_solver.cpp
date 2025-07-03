@@ -30,11 +30,11 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
                     c_s.block(i * particle_dof_size, 0, particle_dof_size, 1) =
                     solver_A.solve(Bc_s) - j_coeff * u(dof.get_dof(x, 3), 0);
                     ret = j_coeff(constant::particle_segment);
+                } else {
+                    MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
+                    c_s.block(i * particle_dof_size, 0, particle_dof_size, 1) =
+                    constant_solver.solve(Bc_s) - j_coeff * u(dof.get_dof(x, 3), 0);
                 }
-            } else {
-                MatrixXd Bc_s = assembled_B / this->step_control->dt_now * last_cs.block(i * particle_dof_size, 0, particle_dof_size, 1);
-                c_s.block(i * particle_dof_size, 0, particle_dof_size, 1) =
-                constant_solver.solve(Bc_s) - j_coeff * u(dof.get_dof(x, 3), 0);
             }
             i++;
         }
