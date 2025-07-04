@@ -68,6 +68,7 @@ void calc_cell_v2() {
         }
     }
     output_manager voltage(MatrixXd::Zero(1, 1));
+    output_manager temp(MatrixXd::Zero(1, 1));
     if (!settings::use_adaptive_time_step) {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
@@ -75,6 +76,7 @@ void calc_cell_v2() {
             if (i * constant::dt - s.step_control->next_output > -0.001) {
                 voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
                                constant::dt * i);
+                temp.append(MatrixXd::Ones(1, 1) * u(dof.get_dof(0, 4)), constant::dt * i);
                 s.print_detail();
                 s.step_control->next_output += constant::output_interval;
             }
@@ -114,6 +116,7 @@ void calc_cell_v2() {
         }
     }
     voltage.write_to_csv("output/voltage.csv");
+    temp.write_to_csv("output/temp.csv");
 }
 
 void calc_cell() {

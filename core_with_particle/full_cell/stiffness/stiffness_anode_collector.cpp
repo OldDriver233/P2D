@@ -40,13 +40,13 @@ void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u,
         }
 
         for (int j = 0; j < n; j++) {
-            const MatrixXd &N = shapes.cached_matrix_N[i * n + j];
-            const MatrixXd &dN = shapes.cached_matrix_dN[i * n + j];
-            const MatrixXd &NNT = shapes.cached_matrix_NNT[i * n + j];
-            const MatrixXd &dNdNT = shapes.cached_matrix_dNdNT[i * n + j];
+            const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
+            const MatrixXd &dN = shapes.cached_matrix_dN[e * n + j];
+            const MatrixXd &NNT = shapes.cached_matrix_NNT[e * n + j];
+            const MatrixXd &dNdNT = shapes.cached_matrix_dNdNT[e * n + j];
             MatrixXd N_T = N.transpose();
             MatrixXd dN_T = dN.transpose();
-            double det = shapes.cached_det_J[i * n + j];
+            double det = shapes.cached_det_J[e * n + j];
             double s = xs(j);
 
             e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / st->dt_now * w(j) * det

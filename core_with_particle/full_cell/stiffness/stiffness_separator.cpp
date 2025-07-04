@@ -187,6 +187,24 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
 
             // t part
             if constexpr(use_temp) {
+                VectorXd grad_p = dN_T * e_p;
+                VectorXd grad_c = dN_T * e_c;
+                double Ne_t = (N_T * e_t).value();
+                // Heat transfer
+                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / dt * w(j) * det
+                        + lambda * dNdNT * w(j) * det;
+                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
+                        + lambda * dNdNT * e_t * w(j) * det;
+                if (!is_first_step) {
+                    e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
+                    e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                }
+            }
+            /*
+            if constexpr(use_temp) {
                 double dNe_p = (dN_T * e_p).sum();
                 double Ne_t = (N_T * e_t).sum();
                 double dNe_c = (dN_T * e_c).sum();
@@ -217,6 +235,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                 temp.push_back(0);
                 temp.push_back(0);
             }
+            */
         }
 
         for (int j = 0; j < n; j++) {

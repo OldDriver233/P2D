@@ -333,11 +333,52 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
             //e_kpp = MatrixXd::Identity(2, 2);
 
             // t part
-            MatrixXd e_eta(n, 1);
-            for (int l = 0; l < n; l++) {
-                e_eta(l, 0) = arr_eta[mesh.node_to_idx[mesh.elements[e * n + l]]];
+            if constexpr (use_temp) {
+                MatrixXd e_eta(n, 1);
+                for (int l = 0; l < n; l++) {
+                    e_eta(l, 0) = arr_eta[mesh.node_to_idx[mesh.elements[e * n + l]]];
+                }
+                double Ne_eta = (N_T * e_eta).value();
+                MatrixXd e_du(n, 1);
+                for (int l = 0; l < n; l++) {
+                    e_du(l, 0) = arr_du[mesh.node_to_idx[mesh.elements[e * n + l]]];
+                }
+                // Heat transfer
+                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / dt * w(j) * det
+                        + lambda * dNdNT * w(j) * det;
+                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
+                        + lambda * dNdNT * e_t * w(j) * det;
+                if (!is_first_step) {
+                    VectorXd grad_p = dN_T * e_p;
+                    VectorXd grad_s = dN_T * e_s;
+                    VectorXd grad_c = dN_T * e_c;
+                    double Ne_q = (N_T * e_q).value();
+                    double Ne_t = (N_T * e_t).value();
+                    double Ne_du = (N_T * e_du).value();
+
+                    // Ohmic heat
+                    e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    e_kts += -(sigma_eff * N * 2 * grad_s.transpose() * dN_T) * sigma_ref * w(j) * det;
+                    e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
+                    e_rt += -(sigma_eff * N * grad_s.dot(grad_s)) * sigma_ref * w(j) * det;
+                    e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    // Irreversible heat
+                    e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    e_rt += -(constant::F * a * N * Ne_q * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    // Reversible heat
+                    e_ktt += -(constant::F * a * NNT * Ne_du * Ne_q) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    e_ktq += -(constant::F * a * NNT * Ne_du * Ne_t) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    e_rt += -(constant::F * a * N * Ne_du * Ne_t * Ne_q) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
+                    if (j == 0) {
+                        //std::cout<< ((k_eff * grad_p.dot(grad_p)) * k_ref + (sigma_eff * grad_s.dot(grad_s)) * sigma_ref - (dk_dt * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref) / (constant::l_ref * constant::l_ref) <<std::endl;
+                        //std::cout<< (constant::F * a * Ne_q * Ne_eta) * j_ref <<std::endl;
+                        //std::cout<< (constant::F * a * Ne_du * Ne_t * Ne_q) * j_ref <<std::endl;
+                        //std::cout<<std::endl;
+                    }
+                }
             }
-            double Ne_eta = (N_T * e_eta).sum();
             /*
             if constexpr (use_temp) {
                 MatrixXd e_du(n, 1);
