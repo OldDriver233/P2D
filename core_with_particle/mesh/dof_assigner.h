@@ -4,6 +4,14 @@
 #include "mesh_reader.h"
 #include <vector>
 
+enum class dof_repr_v {
+    PHI_ELECTROLYTE,
+    CONC_ELECTROLYTE,
+    PHI_ELECTRODE,
+    CONC_ELECTRODE,
+    TEMP,
+};
+
 class dof_assigner {
 public:
     std::vector<std::size_t> dof_container;

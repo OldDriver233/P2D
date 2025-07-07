@@ -2,28 +2,25 @@
 #define OUTPUT_MANAGER_H
 
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <utility>
-#include <eigen3/Eigen/Dense>
 #include <vector>
+#include <Eigen/Dense>
+#include "../../mesh/mesh_reader.h"
+#include "../../mesh/dof_assigner.h"
 
 using Eigen::VectorXd;
-using Eigen::MatrixXd;
 
 class output_manager {
 public:
-    std::vector<VectorXd> data;
-    VectorXd coord;
-    std::vector<double> tags;
+    const mesh_reader& mesh;
+    const dof_assigner& dof;
+    std::vector<double> times;
+    std::vector<VectorXd> vals;
 
-    output_manager() = default;
-    ~output_manager() = default;
-    output_manager(const output_manager&) = default;
-    explicit output_manager(VectorXd coord): coord(std::move(coord)) {}
+    output_manager(const mesh_reader& mesh, const dof_assigner& dof): mesh(mesh), dof(dof) {}
 
-    void append(const VectorXd& row, double tag);
-    void write_to_csv(const std::string& filename);
+    void snapshot(double timestamp, const Eigen::Ref<VectorXd>& u, int dof_category);
+    void snapshot_value(double timestamp, double value);
+    void export_to_csv(const std::string& filename) const;
 };
 
 #endif //OUTPUT_MANAGER_H

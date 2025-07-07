@@ -67,24 +67,34 @@ void calc_cell_v2() {
             i++;
         }
     }
-    output_manager voltage(MatrixXd::Zero(1, 1));
-    output_manager temp(MatrixXd::Zero(1, 1));
+    output_manager voltage(mesh, dof);
+    output_manager temp(mesh, dof);
+    output_manager c_e(mesh, dof);
+    output_manager phi_e(mesh, dof);
+    output_manager phi_s(mesh, dof);
+    output_manager t_dist(mesh, dof);
     if (!settings::use_adaptive_time_step) {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
             s.calc(u, c_s, i * constant::dt, false);
             if (i * constant::dt - s.step_control->next_output > -0.001) {
-                voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
-                               constant::dt * i);
-                temp.append(MatrixXd::Ones(1, 1) * u(dof.get_dof(0, 4)), constant::dt * i);
+                voltage.snapshot_value(constant::dt * i, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+                temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));
+                phi_e.snapshot(constant::dt * i, u, 0);
+                c_e.snapshot(constant::dt * i, u, 1);
+                phi_s.snapshot(constant::dt * i, u, 2);
+                t_dist.snapshot(constant::dt * i, u, 4);
                 s.print_detail();
                 s.step_control->next_output += constant::output_interval;
             }
         }
     } else {
         s.calc(u, c_s, 0, false);
-        voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
-                       0);
+        voltage.snapshot_value(0, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+        phi_e.snapshot(0, u, 0);
+        c_e.snapshot(0, u, 1);
+        phi_s.snapshot(0, u, 2);
+        t_dist.snapshot(0, u, 4);
         s.print_detail();
 
         step_control.update_solution(u, c_s, 1);
@@ -102,21 +112,31 @@ void calc_cell_v2() {
             }
             std::cout << step_control.prev_time << " " << step_control.dt_proposed << std::endl;
             if (step_control.status == StepStatus::ToNextOutput) {
-                voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
-                               step_control.next_output);
+                voltage.snapshot_value(step_control.next_output, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+                phi_e.snapshot(step_control.next_output, u, 0);
+                c_e.snapshot(step_control.next_output, u, 1);
+                phi_s.snapshot(step_control.next_output, u, 2);
+                t_dist.snapshot(step_control.next_output, u, 4);
                 s.print_detail();
                 step_control.next_output += constant::output_interval;
             }
             step_control.step_forward();
         }
         if (step_control.status == StepStatus::ToNextOutput) {
-            voltage.append(MatrixXd::Ones(1, 1) * (u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2))),
-                           step_control.next_output);
+            voltage.snapshot_value(step_control.next_output, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+            phi_e.snapshot(step_control.next_output, u, 0);
+            c_e.snapshot(step_control.next_output, u, 1);
+            phi_s.snapshot(step_control.next_output, u, 2);
+            t_dist.snapshot(step_control.next_output, u, 4);
             s.print_detail();
         }
     }
-    voltage.write_to_csv("output/voltage.csv");
-    temp.write_to_csv("output/temp.csv");
+    voltage.export_to_csv("output/voltage.csv");
+    temp.export_to_csv("output/temp.csv");
+    phi_e.export_to_csv("output/phi_e.csv");
+    c_e.export_to_csv("output/c_e.csv");
+    phi_s.export_to_csv("output/phi_s.csv");
+    t_dist.export_to_csv("output/temperature_dist.csv");
 }
 
 void calc_cell() {
