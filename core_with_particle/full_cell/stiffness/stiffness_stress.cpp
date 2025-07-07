@@ -84,7 +84,7 @@ void stiffness_stress::generate(std::vector<Eigen::Triplet<double> > &t, std::ve
     }
 }
 
-void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std::vector<double> avg_c,
+void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std::vector<double> &avg_c,
     Eigen::Ref<VectorXd> res, const Eigen::Ref<Eigen::SparseMatrix<double>>& K) {
     const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type), dim_voigt = (dim * (dim + 1)) / 2;
     std::size_t node_cnt = mesh.node_count;
@@ -155,6 +155,44 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
                 e_load += B.transpose() * F * w(j) * det / E_ref;
             }
             //std::cout<<e_load.transpose() * E_ref<<"\n";
+
+            for (int j = 0; j < n * dim; j++) {
+                std::size_t id_l = mesh.elements[e * n + j / dim];
+                std::size_t dof_l = 5 + j % dim;
+                if (!mesh.anode_cc_wall_nodes.contains(id_l)) {
+                    load(id_l * dim + dof_l - 5) += e_load(j);
+                }
+            }
+        }
+    }
+
+    if(settings::calc_temperature) {
+        for (int e = 0; e < mesh.elem_count; e++) {
+            VectorXd e_load = VectorXd::Zero(n * dim);
+            auto [E, nu] = this->get_material_property(e);
+            double alpha = 1e-5;
+            double c_coeff = E / (1 - 2 * nu);
+
+            VectorXd e_t(n);
+            for (int j = 0; j < n; j++) {
+                std::size_t node_id = mesh.elements[e * n + j];
+                e_t(j) = u(dof.get_dof(node_id, 4), 0);
+            }
+
+            for (int j = 0; j < n; j++) {
+                const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
+                const MatrixXd &B = shapes.cached_matrix_B[e * n + j];
+                double det = shapes.cached_det_J[e * n + j];
+                double t = (N.transpose() * e_t).value();
+
+                double disp = alpha * (t - constant::t_ref);
+                VectorXd F = VectorXd::Zero(dim_voigt);
+                for (int l = 0; l < dim; l++) {
+                    F(l) = disp * c_coeff;
+                }
+
+                e_load += B.transpose() * F * w(j) * det / E_ref;
+            }
 
             for (int j = 0; j < n * dim; j++) {
                 std::size_t id_l = mesh.elements[e * n + j / dim];

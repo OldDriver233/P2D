@@ -7,6 +7,8 @@ template<bool use_temp>
 void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u, 
                                  const Eigen::Ref<MatrixXd> &du, 
                                  const Eigen::Ref<MatrixXd> &c_s,
+                                 const std::vector<double> &stress,
+                                 const std::vector<double> &avg_conc,
                                  std::vector<Eigen::Triplet<double>> &t, 
                                  Eigen::Ref<VectorXd> res, 
                                  bool is_first_step,
@@ -75,6 +77,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     std::vector<double> ktt(simd_size);
     std::vector<double> ktq(simd_size);
     std::vector<double> rt(simd_size);
+    std::vector<double> stress_surf(simd_size);
     double *arr_eta = new double[simd_size];
     double *arr_du = new double[simd_size];
     VectorXd c_ss(simd_size);
@@ -96,16 +99,33 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         arr_d_j0_e[i] = d_j0_e<2>(c_e, c_ss[i], t);
         i++;
     }
+    if (settings::stress_analysis) {
+        i = 0;
+        const double E_p = constant::cathode.E, nu_p = constant::cathode.nu, omega = constant::cathode.omega;
+        for (auto x: mesh.cathode_nodes) {
+            int i_avg = dof.particle_mapper[x];
+            double stress_outer = (stress[4 * x] + stress[4 * x + 1] + stress[4 * x + 2]) / (3 * epsilon_s);
+            stress_surf[i] = 2 * omega * E_p / (9 * (1 - nu_p)) * (avg_conc[i_avg] - c_ss[i] * c_max) + stress_outer;
+            i++;
+        }
+    } else {
+        i = 0;
+        for (auto x: mesh.cathode_nodes) {
+            stress_surf[i] = 0;
+            i++;
+        }
+    }
     if (!settings::use_customize_uoc) {
         int i = 0;
         for (auto x: mesh.cathode_nodes) {
             double t = constant::T;
+            double omega = constant::cathode.omega;
             if (settings::calc_temperature) {
                 t = u_ptr[dof.get_dof(x, 4)];
             }
 
             arr_uoc[i] = uoc<2>(c_ss[i]);
-            arr_eta[i] = u_ptr[dof.get_dof(x, 2)] - u_ptr[dof.get_dof(x, 0)] - arr_uoc[i];
+            arr_eta[i] = u_ptr[dof.get_dof(x, 2)] - u_ptr[dof.get_dof(x, 0)] - arr_uoc[i] - omega * stress_surf[i] / constant::F;
             arr_d_uoc[i] = d_uoc<2>(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i], t);
             arr_d_bv[i] = d_bv(arr_eta[i], t);
@@ -116,6 +136,8 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         int i = 0;
         for (auto x: mesh.cathode_nodes) {
             double t = constant::T;
+            double omega = constant::cathode.omega;
+
             if (settings::calc_temperature) {
                 t = u_ptr[dof.get_dof(x, 4)];
             }
@@ -399,12 +421,6 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                     e_ktt += -(constant::F * a * NNT * Ne_du * Ne_q) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
                     e_ktq += -(constant::F * a * NNT * Ne_du * Ne_t) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
                     e_rt += -(constant::F * a * N * Ne_du * Ne_t * Ne_q) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                    if (j == 0) {
-                        //std::cout<< ((k_eff * grad_p.dot(grad_p)) * k_ref + (sigma_eff * grad_s.dot(grad_s)) * sigma_ref - (dk_dt * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref) / (constant::l_ref * constant::l_ref) <<std::endl;
-                        //std::cout<< (constant::F * a * Ne_q * Ne_eta) * j_ref <<std::endl;
-                        //std::cout<< (constant::F * a * Ne_du * Ne_t * Ne_q) * j_ref <<std::endl;
-                        //std::cout<<std::endl;
-                    }
                 }
             }
         }
@@ -452,9 +468,11 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
 
 template void stiffness_cathode::generate<true>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
+                  const std::vector<double> &, const std::vector<double> &,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
                   bool, std::vector<double> &);
 template void stiffness_cathode::generate<false>(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
+                  const std::vector<double> &, const std::vector<double> &,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
                   bool, std::vector<double> &);

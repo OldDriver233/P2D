@@ -32,6 +32,7 @@ public:
     template<bool use_temp>
     void generate(const Eigen::Ref<MatrixXd> &, const Eigen::Ref<MatrixXd> &,
                   const Eigen::Ref<MatrixXd> &,
+                  const std::vector<double>&, const std::vector<double>&,
                   std::vector<Eigen::Triplet<double> > &, Eigen::Ref<VectorXd>,
                   bool, std::vector<double>&);
 };
