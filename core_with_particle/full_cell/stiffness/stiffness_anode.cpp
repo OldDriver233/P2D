@@ -86,14 +86,18 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     int i = 0;
     for (auto x: mesh.anode_nodes) {
         double t = constant::T;
+        double c_e = 1;
         if (settings::calc_temperature) {
             t = u_ptr[dof.get_dof(x, 4)];
         }
+        if (!settings::is_solid_battery) {
+            c_e = u_ptr[dof.get_dof(x, 1)];
+        }
         c_ss[i] = c_s((dof.particle_mapper[x] + 1) * (particle_elem_cnt + 1) - 1, 0);
 
-        arr_j0[i] = j0<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
-        arr_d_j0_a[i] = d_j0_a<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
-        arr_d_j0_e[i] = d_j0_e<1>(u_ptr[dof.get_dof(x, 1)], c_ss[i], t);
+        arr_j0[i] = j0<1>(c_e, c_ss[i], t);
+        arr_d_j0_a[i] = d_j0_a<1>(c_e, c_ss[i], t);
+        arr_d_j0_e[i] = d_j0_e<1>(c_e, c_ss[i], t);
         i++;
     }
     if (!settings::use_customize_uoc) {
@@ -134,11 +138,11 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     if constexpr (use_temp) {
         int i = 0;
         for (auto e: mesh.anode_elements) {
-            VectorXd e_c(n);
+            VectorXd e_c = VectorXd::Zero(n);
             VectorXd e_t(n);
             for (int j = 0; j < n; j++) {
                 int node_id = mesh.elements[e * n + j];
-                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+                if (!settings::is_solid_battery) e_c(j) = u(dof.get_dof(node_id, 1), 0);
                 e_t(j) = u(dof.get_dof(node_id, 4), 0);
             }
             for (int j = 0; j < n; j++) {
@@ -155,10 +159,10 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     } else {
         int i = 0;
         for (auto e: mesh.anode_elements) {
-            VectorXd e_c(n);
+            VectorXd e_c = VectorXd::Zero(n);
             for (int j = 0; j < n; j++) {
                 int node_id = mesh.elements[e * n + j];
-                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+                if (!settings::is_solid_battery) e_c(j) = u(dof.get_dof(node_id, 1), 0);
             }
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
@@ -189,16 +193,19 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             }
         }
     }
-    if (!settings::use_customize_diffuse) {
-        for (int i = 0; i < mesh.anode_elements.size(); ++i) {
-            for (int j = 0; j < n; j++) {
-                arr_d_eff[i * n + j] = constant::de_an / d_ref * eff_mat;
+
+    if (!settings::is_solid_battery) {
+        if (!settings::use_customize_diffuse) {
+            for (int i = 0; i < mesh.anode_elements.size(); ++i) {
+                for (int j = 0; j < n; j++) {
+                    arr_d_eff[i * n + j] = constant::de_an / d_ref * eff_mat;
+                }
             }
-        }
-    } else {
-        for (int i = 0; i < mesh.anode_elements.size(); ++i) {
-            for (int j = 0; j < n; j++) {
-                arr_d_eff[i * n + j] = pfm->f_diffuse_l(vars(i * n + j, 0), vars(i * n + j, 1)) / d_ref * eff_mat;
+        } else {
+            for (int i = 0; i < mesh.anode_elements.size(); ++i) {
+                for (int j = 0; j < n; j++) {
+                    arr_d_eff[i * n + j] = pfm->f_diffuse_l(vars(i * n + j, 0), vars(i * n + j, 1)) / d_ref * eff_mat;
+                }
             }
         }
     }
@@ -213,18 +220,25 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         double bv_v = arr_bv[i];
         double d_bv_v = arr_d_bv[i];
 
-        kqp[i] = -j0_v * d_bv_v * (-1) * c_max * ce_root;
-        kqc[i] = -d_j0_e_v * bv_v * c_max * ce_root;
-        kqs[i] = -j0_v * d_bv_v * c_max * ce_root;
-        kqq[i] = j_ref - (d_j0_a_v * bv_v * c_max * ce_root - j0_v * d_bv_v * d_uoc_v * c_max * ce_root) * dc_ssdj;
-        rq[i] = u_ptr[dof.get_dof(x, 3)] * j_ref - j0_v * bv_v * c_max * ce_root;
+        if (!settings::is_solid_battery) {
+            kqp[i] = -j0_v * d_bv_v * (-1) * c_max * ce_root;
+            kqc[i] = -d_j0_e_v * bv_v * c_max * ce_root;
+            kqs[i] = -j0_v * d_bv_v * c_max * ce_root;
+            kqq[i] = j_ref - (d_j0_a_v * bv_v * c_max * ce_root - j0_v * d_bv_v * d_uoc_v * c_max * ce_root) * dc_ssdj;
+            rq[i] = u_ptr[dof.get_dof(x, 3)] * j_ref - j0_v * bv_v * c_max * ce_root;
+        } else {
+            kqp[i] = -j0_v * d_bv_v * (-1) * c_max;
+            kqs[i] = -j0_v * d_bv_v * c_max;
+            kqq[i] = j_ref - (d_j0_a_v * bv_v * c_max - j0_v * d_bv_v * d_uoc_v * c_max) * dc_ssdj;
+            rq[i] = u_ptr[dof.get_dof(x, 3)] * j_ref - j0_v * bv_v * c_max;
+        }
         i++;
     }
 
     i = 0;
     for (auto x: mesh.anode_nodes) {
         t.emplace_back(dof.get_dof(x, 3), dof.get_dof(x, 0), kqp[i]);
-        t.emplace_back(dof.get_dof(x, 3), dof.get_dof(x, 1), kqc[i]);
+        if (!settings::is_solid_battery) t.emplace_back(dof.get_dof(x, 3), dof.get_dof(x, 1), kqc[i]);
         t.emplace_back(dof.get_dof(x, 3), dof.get_dof(x, 2), kqs[i]);
         t.emplace_back(dof.get_dof(x, 3), dof.get_dof(x, 3), kqq[i]);
         res(dof.get_dof(x, 3)) = rq[i];
@@ -235,14 +249,14 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     i = 0;
     for (auto e: mesh.anode_elements) {
         MatrixXd e_p(n, 1);
-        MatrixXd e_c(n, 1);
+        MatrixXd e_c = MatrixXd::Zero(n, 1);
         MatrixXd e_s(n, 1);
         MatrixXd e_q(n, 1);
         MatrixXd e_t(n, 1);
         for (int j = 0; j < n; j++) {
             std::size_t node_id = mesh.elements[e * n + j];
             e_p(j, 0) = u(dof.get_dof(node_id, 0), 0);
-            e_c(j, 0) = u(dof.get_dof(node_id, 1), 0);
+            if (!settings::is_solid_battery) e_c(j, 0) = u(dof.get_dof(node_id, 1), 0);
             e_s(j, 0) = u(dof.get_dof(node_id, 2), 0);
             e_q(j, 0) = u(dof.get_dof(node_id, 3), 0);
             if constexpr (use_temp) {
@@ -251,12 +265,12 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 e_t(j, 0) = constant::T;
             }
         }
-        MatrixXd e_dc(n, 1);
+        MatrixXd e_dc = MatrixXd::Zero(n, 1);
         MatrixXd e_ds(n, 1);
         MatrixXd e_dt(n, 1);
         for (int j = 0; j < n; j++) {
             std::size_t node_id = mesh.elements[e * n + j];
-            e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
+            if (!settings::is_solid_battery) e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
             e_ds(j, 0) = du(dof.get_dof(node_id, 2), 0);
             if constexpr (use_temp) {
                 e_dt(j, 0) = du(dof.get_dof(node_id, 4), 0);
@@ -313,28 +327,36 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             //e_kss = MatrixXd::Identity(2, 2);
 
             // c part
-            double eff_2 = a * constant::l_ref * constant::l_ref * (1 - constant::trans) / d_ref;
-            double eff_3 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
-            e_kcc += epsilon * eff_3 * NNT * w(j) * det + d_eff * dNdNT * w(j) * det;
-            e_kcq += -eff_2 * NNT * w(j) * det * j_ref / ce_int;
-            if (!is_first_step) {
-                e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det - eff_2 * NNT * e_q *
-                        w(j) * det * j_ref / ce_int;
-            } else {
-                e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det;
+            if (!settings::is_solid_battery) {
+                double eff_2 = a * constant::l_ref * constant::l_ref * (1 - constant::trans) / d_ref;
+                double eff_3 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
+                e_kcc += epsilon * eff_3 * NNT * w(j) * det + d_eff * dNdNT * w(j) * det;
+                e_kcq += -eff_2 * NNT * w(j) * det * j_ref / ce_int;
+                if (!is_first_step) {
+                    e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det - eff_2 * NNT * e_q *
+                            w(j) * det * j_ref / ce_int;
+                } else {
+                    e_rc += epsilon * eff_3 * NNT * e_dc * w(j) * det + d_eff * dNdNT * e_c * w(j) * det;
+                }
             }
             //e_kcc = MatrixXd::Identity(2, 2);
 
             // p part
             double eff_4 = a * F * constant::l_ref * constant::l_ref / k_ref;
-            e_kpp += k_eff * dNdNT * w(j) * det;
-            e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det
-                    - kd_eff / ele_c_e * dNdNT * w(j) * det
-                    - d_kd_eff / ele_c_e * dNdNT * e_c * N_T * w(j) * det
-                    + kd_eff / (ele_c_e * ele_c_e) * dNdNT * e_c * N_T * w(j) * det;
-            e_kpq += -eff_4 * NNT * w(j) * det * j_ref;
-            e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / ele_c_e * dNdNT * e_c * w(j) * det - eff_4 * NNT * e_q *
-                    w(j) * det * j_ref;
+            if (!settings::is_solid_battery) {
+                e_kpp += k_eff * dNdNT * w(j) * det;
+                e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det
+                        - kd_eff / ele_c_e * dNdNT * w(j) * det
+                        - d_kd_eff / ele_c_e * dNdNT * e_c * N_T * w(j) * det
+                        + kd_eff / (ele_c_e * ele_c_e) * dNdNT * e_c * N_T * w(j) * det;
+                e_kpq += -eff_4 * NNT * w(j) * det * j_ref;
+                e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / ele_c_e * dNdNT * e_c * w(j) * det - eff_4 * NNT * e_q *
+                        w(j) * det * j_ref;
+            } else {
+                e_kpp += k_eff * dNdNT * w(j) * det;
+                e_kpq += -eff_4 * NNT * w(j) * det * j_ref;
+                e_rp += k_eff * dNdNT * e_p * w(j) * det - eff_4 * NNT * e_q * w(j) * det * j_ref;
+            }
             //e_kpp = MatrixXd::Identity(2, 2);
 
             // t part
@@ -362,13 +384,14 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                     double Ne_du = (N_T * e_du).value();
 
                     // Ohmic heat
-                    e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
-                    e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
-                    e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    if (!settings::is_solid_battery) e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    if (!settings::is_solid_battery) e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                    else e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T) * k_ref * w(j) * det;
+                    if (!settings::is_solid_battery) e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
                     e_kts += -(sigma_eff * N * 2 * grad_s.transpose() * dN_T) * sigma_ref * w(j) * det;
                     e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
                     e_rt += -(sigma_eff * N * grad_s.dot(grad_s)) * sigma_ref * w(j) * det;
-                    e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    if (!settings::is_solid_battery) e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
                     // Irreversible heat
                     e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
                     e_rt += -(constant::F * a * N * Ne_q * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
@@ -385,63 +408,6 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
                 }
 
             }
-            /*
-            if constexpr (use_temp) {
-                MatrixXd e_du(n, 1);
-                for (int l = 0; l < n; l++) {
-                    e_du(l, 0) = arr_du[mesh.node_to_idx[mesh.elements[e * n + l]]];
-                }
-                double dNe_p = (dN_T * e_p).sum();
-                double dNe_s = (dN_T * e_s).sum();
-                double Ne_t = (N_T * e_t).sum();
-                double dNe_c = (dN_T * e_c).sum();
-                double Ne_q = (N_T * e_q).sum();
-                double Ne_du = (N_T * e_du).sum();
-                double e_dp2 = dNe_p * dNe_p;
-                double e_ds2 = dNe_s * dNe_s;
-                double e_tdpdc = Ne_t * dNe_p * dNe_c;
-                double e_dpdc = dNe_p * dNe_c;
-                double e_tdc = Ne_t * dNe_c;
-                double e_tdp = Ne_t * dNe_p;
-                double e_tdu = Ne_t * Ne_du;
-                double e_qt = Ne_q * Ne_t;
-                double e_qeta = Ne_q * Ne_eta;
-                double e_qtdu = Ne_q * Ne_t * Ne_du;
-                double e_qdu = Ne_q * Ne_du;
-                // Heat transfer
-                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / dt * w(j) * det
-                        + lambda * dNdNT * w(j) * det;
-                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
-                        + lambda * dNdNT * e_t * w(j) * det;
-                // Q_ohm
-                if (!is_first_step) {
-                    e_ktt += (dk_dt * NNT * e_dpdc / ele_c_e) * k_ref * w(j) * det;
-                    e_ktp += -(k_eff * NdNT * 2 * dNe_p - dk_dt * NdNT * e_tdc / ele_c_e) * k_ref * w(j) * det;
-                    e_ktc += (dk_dt * NdNT * e_tdp / ele_c_e) * k_ref * w(j) * det;
-                    e_kts += -(sigma_eff * NdNT * 2 * dNe_s) * sigma_ref * w(j) * det;
-                    e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
-                    e_rt += -(sigma_eff * N * e_ds2) * sigma_ref * w(j) * det;
-                    // Q_rxn
-                    e_ktq += -(constant::F * a * NNT * Ne_eta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                    e_rt += -(constant::F * a * N * e_qeta) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                    // Q_rev
-                    e_ktt += -(constant::F * a * NNT * e_qdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                    e_ktq += -(constant::F * a * NNT * e_tdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                    e_rt += -(constant::F * a * N * e_qtdu) * constant::l_ref * constant::l_ref * j_ref * w(j) * det;
-                }
-                if (j == 0) {
-                    temp.push_back(((k_eff * e_dp2 - dk_dt * e_tdpdc / ele_c_e) * k_ref + (sigma_eff * e_ds2) * sigma_ref) / (constant::l_ref * constant::l_ref));
-                    temp.push_back((constant::F * a * e_qeta) * j_ref);
-                    temp.push_back((constant::F * a * e_qtdu) * j_ref);
-                    temp.push_back(Ne_eta);
-                }
-            } else if (j == 0) {
-                temp.push_back(0);
-                temp.push_back(0);
-                temp.push_back(0);
-                temp.push_back(Ne_eta);
-            }
-            */
         }
 
         for (int j = 0; j < n; j++) {
@@ -449,11 +415,13 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
             for (int l = 0; l < n; l++) {
                 std::size_t id_r = mesh.elements[e * n + l];
                 t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 0), e_kpp(j, l));
-                t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 1), e_kpc(j, l));
+                if (!settings::is_solid_battery) t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 1), e_kpc(j, l));
                 t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 3), e_kpq(j, l));
 
-                t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
-                if (!is_first_step) t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 3), e_kcq(j, l));
+                if (!settings::is_solid_battery) {
+                    t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
+                    if (!is_first_step) t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 3), e_kcq(j, l));
+                }
 
                 if (!mesh.anode_wall_nodes.contains(id_l) && !mesh.anode_wall_nodes.contains(id_r)) {
                     t.emplace_back(dof.get_dof(id_l, 2), dof.get_dof(id_r, 2), e_kss(j, l));
@@ -462,14 +430,14 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
 
                 if constexpr(use_temp) {
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 0), e_ktp(j, l));
-                    t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 1), e_ktc(j, l));
+                    if (!settings::is_solid_battery) t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 1), e_ktc(j, l));
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 2), e_kts(j, l));
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 3), e_ktq(j, l));
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 4), e_ktt(j, l));
                 }
             }
             res(dof.get_dof(id_l, 0)) += e_rp(j);
-            res(dof.get_dof(id_l, 1)) += e_rc(j);
+            if (!settings::is_solid_battery) res(dof.get_dof(id_l, 1)) += e_rc(j);
             res(dof.get_dof(id_l, 2)) += e_rs(j);
             if constexpr (use_temp) res(dof.get_dof(id_l, 4)) += e_rt(j);
         }

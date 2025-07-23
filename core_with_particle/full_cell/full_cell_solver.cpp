@@ -74,9 +74,10 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
     anode_particle.pre_calc(c_s);
     cathode_particle.pre_calc(c_s);
     //printf("Step\tIter\tRelTol\tDelta\n");
+    Eigen::SparseMatrix<double> k(dof.dof_cnt, dof.dof_cnt);
 
     while (iter_time < iter && rel_delta > tolerance) {
-        Eigen::SparseMatrix<double> k(dof.dof_cnt, dof.dof_cnt);
+        k.setZero();
         VectorXd res = VectorXd::Zero(dof.dof_cnt);
         coeff.clear();
         temp.clear();
@@ -95,10 +96,15 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         k.setFromTriplets(coeff.begin(), coeff.end());
         apply_boundary(u, k, res, false);
 
+        k.makeCompressed();
         solver.compute(k);
         MatrixXd delta = -solver.solve(res);
+        std::cout<<std::setw(12);
+        std::cout<<u.transpose()<<std::endl;
         du += delta;
         u += delta;
+        std::cout<<res.transpose()<<std::endl;
+        std::cout<<delta.transpose()<<std::endl;
 
         if (step != 0) {
             if (settings::calc_temperature || settings::use_adaptive_time_step) {
@@ -121,7 +127,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
             rel_tol = res_norm / first_norm;
             rel_delta = norm / first_delta_norm;
         }
-        printf("%-8d%-8d%1.5lf %1.5lf %e\n", step, iter_time, rel_tol, rel_delta, res_norm);
+        printf("%-8d%-8d%1.5lf %1.5lf %e %e\n", step, iter_time, rel_tol, rel_delta, res_norm, norm);
 
         iter_time++;
     }

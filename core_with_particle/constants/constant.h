@@ -9,6 +9,7 @@ public:
     static int step;
     static double output_interval;
     static double finish_time;
+    static double time_step_tolerance;
     static double epsilon_e_an;
     static double epsilon_s_an;
     static double epsilon_e_ca;

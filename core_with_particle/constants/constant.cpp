@@ -11,6 +11,7 @@ double constant::dt;
 int constant::step;
 double constant::output_interval;
 double constant::finish_time;
+double constant::time_step_tolerance;
 double constant::epsilon_e_an;
 double constant::epsilon_s_an;
 double constant::epsilon_e_ca;
@@ -83,6 +84,7 @@ void constant::read() {
     if (settings::use_adaptive_time_step) {
         constant::finish_time = data["finish_time"];
     }
+    constant::time_step_tolerance = data["time_step_tolerance"];
     constant::epsilon_e_an = data["epsilon_e_an"];
     constant::epsilon_s_an = data["epsilon_s_an"];
     constant::epsilon_e_ca = data["epsilon_e_ca"];

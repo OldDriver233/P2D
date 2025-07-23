@@ -3,12 +3,13 @@
 
 #include "mesh_reader.h"
 #include <vector>
+#include <unordered_map>
 
 enum class dof_repr_v {
     PHI_ELECTROLYTE,
     CONC_ELECTROLYTE,
     PHI_ELECTRODE,
-    CONC_ELECTRODE,
+    INTERFACIAL_FLUX,
     TEMP,
 };
 
@@ -17,7 +18,9 @@ public:
     std::vector<std::size_t> dof_container;
     std::vector<std::size_t> particle_mapper;
     std::vector<std::size_t> particle_to_node;
+    std::unordered_map<dof_repr_v, std::size_t> dof_idx_mapper;
     std::size_t dof_cnt = 0;
+    std::size_t dof_per_node;
 
     dof_assigner() = default;
     ~dof_assigner() = default;

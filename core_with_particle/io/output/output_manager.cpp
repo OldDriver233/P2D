@@ -25,6 +25,7 @@ void output_manager::snapshot_value(double timestamp, double value) {
 
 void output_manager::export_to_csv(const std::string &filename) const {
     std::fstream f(filename, std::ios::out);
+    f<<std::setprecision(10);
     for (int i = 0; i < this->times.size(); i++) {
         f<<times[i];
         for (int j = 0; j < this->vals[0].size(); j++) {

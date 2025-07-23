@@ -1,6 +1,7 @@
 #ifndef STEPCONTROL_H
 #define STEPCONTROL_H
 #include <eigen3/Eigen/Dense>
+#include "../constants/constant.h"
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -24,7 +25,7 @@ public:
     double dt_prev = 0.0;
     double prev_time = 0.0;
     double next_output = 0.0;
-    double tolerance = 1e-1;
+    double tolerance = constant::time_step_tolerance;
     double maximum_mult = 2.5;
 
     VectorXd u_hist[3];

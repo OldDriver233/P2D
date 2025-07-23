@@ -49,12 +49,12 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     if constexpr(use_temp) {
         int i = 0;
         for (auto e: mesh.separator_elements) {
-            MatrixXd e_c(n, 1);
+            MatrixXd e_c = MatrixXd::Zero(n, 1);
             MatrixXd e_t(n, 1);
 
             for (int j = 0; j < n; j++) {
                 int node_id = mesh.elements[e * n + j];
-                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+                if (!settings::is_solid_battery) e_c(j) = u(dof.get_dof(node_id, 1), 0);
                 e_t(j) = u(dof.get_dof(node_id, 4), 0);
             }
             for (int j = 0; j < n; j++) {
@@ -71,10 +71,10 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     } else {
         int i = 0;
         for (auto e: mesh.separator_elements) {
-            MatrixXd e_c(n, 1);
+            MatrixXd e_c = MatrixXd::Zero(n, 1);
             for (int j = 0; j < n; j++) {
                 int node_id = mesh.elements[e * n + j];
-                e_c(j) = u(dof.get_dof(node_id, 1), 0);
+                if (!settings::is_solid_battery) e_c(j) = u(dof.get_dof(node_id, 1), 0);
             }
             for (int j = 0; j < n; j++) {
                 const MatrixXd &N = shapes.cached_matrix_N[e * n + j];
@@ -107,30 +107,34 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
         }
     }
 
-    if (!settings::use_customize_diffuse) {
-        for (int i = 0; i < n * mesh.separator_elements.size(); i++) {
-            arr_d_eff[i] = constant::de_sep / d_ref * eff_mat;
-        }
-    } else {
-        //VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
-        for (int i = 0; i < n * mesh.separator_elements.size(); i++) {
-            arr_d_eff[i] = pfm->f_diffuse_l(vars(i, 0), vars(i, 1)) / d_ref * eff_mat;
+    if (!settings::is_solid_battery) {
+        if (!settings::use_customize_diffuse) {
+            for (int i = 0; i < n * mesh.separator_elements.size(); i++) {
+                arr_d_eff[i] = constant::de_sep / d_ref * eff_mat;
+            }
+        } else {
+            //VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);
+            for (int i = 0; i < n * mesh.separator_elements.size(); i++) {
+                arr_d_eff[i] = pfm->f_diffuse_l(vars(i, 0), vars(i, 1)) / d_ref * eff_mat;
+            }
         }
     }
 
     int i = 0;
     for (auto e: mesh.separator_elements) {
         MatrixXd e_p(n, 1);
-        MatrixXd e_c(n, 1);
+        MatrixXd e_c = MatrixXd::Zero(n, 1);
         MatrixXd e_t(n, 1);
-        MatrixXd e_dc(n, 1);
+        MatrixXd e_dc = MatrixXd::Zero(n, 1);
         MatrixXd e_dt(n, 1);
 
         for (int j = 0; j < n; j++) {
             std::size_t node_id = mesh.elements[e * n + j];
             e_p(j, 0) = u(dof.get_dof(node_id, 0), 0);
-            e_c(j, 0) = u(dof.get_dof(node_id, 1), 0);
-            e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
+            if (!settings::is_solid_battery) {
+                e_c(j, 0) = u(dof.get_dof(node_id, 1), 0);
+                e_dc(j, 0) = du(dof.get_dof(node_id, 1), 0);
+            }
             if constexpr(use_temp) {
                 e_t(j, 0) = u(dof.get_dof(node_id, 4), 0);
                 e_dt(j, 0) = du(dof.get_dof(node_id, 4), 0);
@@ -172,17 +176,24 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             double d_kd_eff = 2 * d_k_eff * constant::R * ele_c_t / constant::F * (1 - constant::trans);
 
             // phi part
-            e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / ele_c_e * dNdNT * e_c * w(j) * det;
-            e_kpp += k_eff * dNdNT * w(j) * det;
-            e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det
-                     - kd_eff / ele_c_e * dNdNT * w(j) * det
-                     - d_kd_eff / ele_c_e * dNdNT * e_c * N_T * w(j) * det
-                     + kd_eff / (ele_c_e * ele_c_e) * dNdNT * e_c * N_T * w(j) * det;
+            if (!settings::is_solid_battery) {
+                e_rp += k_eff * dNdNT * e_p * w(j) * det - kd_eff / ele_c_e * dNdNT * e_c * w(j) * det;
+                e_kpp += k_eff * dNdNT * w(j) * det;
+                e_kpc += d_k_eff * dNdNT * e_p * N_T * w(j) * det
+                         - kd_eff / ele_c_e * dNdNT * w(j) * det
+                         - d_kd_eff / ele_c_e * dNdNT * e_c * N_T * w(j) * det
+                         + kd_eff / (ele_c_e * ele_c_e) * dNdNT * e_c * N_T * w(j) * det;
+            } else {
+                e_rp += k_eff * dNdNT * e_p * w(j) * det;
+                e_kpp += k_eff * dNdNT * w(j) * det;
+            }
             //e_kpp = MatrixXd::Identity(n, n);
 
             // c part
-            e_rc += epsilon * eff_1 * NNT * e_dc * w(j) * det + arr_d_eff[i * n + j] * dNdNT * e_c * w(j) * det;
-            e_kcc += epsilon * eff_1 * NNT * w(j) * det + arr_d_eff[i * n + j] * dNdNT * w(j) * det;
+            if (!settings::is_solid_battery) {
+                e_rc += epsilon * eff_1 * NNT * e_dc * w(j) * det + arr_d_eff[i * n + j] * dNdNT * e_c * w(j) * det;
+                e_kcc += epsilon * eff_1 * NNT * w(j) * det + arr_d_eff[i * n + j] * dNdNT * w(j) * det;
+            }
             //e_kcc = MatrixXd::Identity(n, n);
 
             // t part
@@ -196,46 +207,18 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
                 e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
                         + lambda * dNdNT * e_t * w(j) * det;
                 if (!is_first_step) {
-                    e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
-                    e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
-                    e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
-                    e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
-                    e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    if (!settings::is_solid_battery) {
+                        e_ktt += (dk_dt * NNT / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                        e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T - dk_dt * N * Ne_t * grad_c.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                        e_ktc += (dk_dt * N * Ne_t * grad_p.transpose() * dN_T / ele_c_e) * k_ref * w(j) * det;
+                        e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
+                        e_rt += (dk_dt * N * Ne_t / ele_c_e * grad_c.dot(grad_p)) * k_ref * w(j) * det;
+                    } else {
+                        e_ktp += -(k_eff * N * 2 * grad_p.transpose() * dN_T) * k_ref * w(j) * det;
+                        e_rt += -(k_eff * N * grad_p.dot(grad_p)) * k_ref * w(j) * det;
+                    }
                 }
             }
-            /*
-            if constexpr(use_temp) {
-                double dNe_p = (dN_T * e_p).sum();
-                double Ne_t = (N_T * e_t).sum();
-                double dNe_c = (dN_T * e_c).sum();
-                double e_dp2 = dNe_p * dNe_p;
-                double e_tdpdc = Ne_t * dNe_p * dNe_c;
-                double e_dpdc = dNe_p * dNe_c;
-                double e_tdc = Ne_t * dNe_c;
-                double e_tdp = Ne_t * dNe_p;
-                e_ktt += rho * cap * constant::l_ref * constant::l_ref * NNT / dt * w(j) * det
-                         + lambda * dNdNT * w(j) * det;
-                e_rt += rho * cap * constant::l_ref * constant::l_ref * NNT * e_dt / dt * w(j) * det
-                         + lambda * dNdNT * e_t * w(j) * det;
-                if (!is_first_step) {
-                    e_ktt += (dk_dt * N * e_dpdc * N_T / ele_c_e) * k_ref;
-                    e_ktp += -(k_eff * N * 2 * dN_T * e_p * dN_T - dk_dt * N * e_tdc * dN_T / ele_c_e) * k_ref;
-                    e_ktc += (dk_dt * N * e_tdp * dN_T / ele_c_e) * k_ref;
-                    e_rt += -(k_eff * N * e_dp2 - dk_dt * N * e_tdpdc / ele_c_e) * k_ref * w(j) * det;
-                }
-                if (j == 0) {
-                    temp.push_back(((k_eff * e_dp2 - dk_dt * e_tdpdc / ele_c_e) * k_ref) / (constant::l_ref * constant::l_ref));
-                    temp.push_back(0);
-                    temp.push_back(0);
-                    temp.push_back(0);
-                }
-            } else if (j == 0) {
-                temp.push_back(0);
-                temp.push_back(0);
-                temp.push_back(0);
-                temp.push_back(0);
-            }
-            */
         }
 
         for (int j = 0; j < n; j++) {
@@ -243,18 +226,20 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
             for (int l = 0; l < n; l++) {
                 std::size_t id_r = mesh.elements[e * n + l];
                 t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 0), e_kpp(j, l));
-                t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 1), e_kpc(j, l));
-                t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
+                if (!settings::is_solid_battery) {
+                    t.emplace_back(dof.get_dof(id_l, 0), dof.get_dof(id_r, 1), e_kpc(j, l));
+                    t.emplace_back(dof.get_dof(id_l, 1), dof.get_dof(id_r, 1), e_kcc(j, l));
+                }
 
                 if constexpr(use_temp) {
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 0), e_ktp(j, l));
-                    t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 1), e_ktc(j, l));
+                    if (!settings::is_solid_battery) t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 1), e_ktc(j, l));
                     t.emplace_back(dof.get_dof(id_l, 4), dof.get_dof(id_r, 4), e_ktt(j, l));
                 }
             }
 
             res(dof.get_dof(id_l, 0)) += e_rp(j);
-            res(dof.get_dof(id_l, 1)) += e_rc(j);
+            if (!settings::is_solid_battery) res(dof.get_dof(id_l, 1)) += e_rc(j);
             if constexpr(use_temp) res(dof.get_dof(id_l, 4)) += e_rt(j);
         }
         i++;

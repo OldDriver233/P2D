@@ -37,16 +37,17 @@ void calc_cell_v2() {
     full_cell_solver s(mesh, dof, particle_coord, &step_control);
     int eff_size = mesh.anode_nodes.size() + mesh.cathode_nodes.size();
     VectorXd u = VectorXd::Zero(dof.dof_cnt);
+    std::cout<<"This task has "<<dof.dof_cnt<<" DoFs.\n";
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
-            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an);
-            u(dof.get_dof(i, 1)) = 1;
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an) - 0.1;
+            if (!settings::is_solid_battery) u(dof.get_dof(i, 1)) = 1;
             if (mesh.anode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = 0;
             } else if (mesh.cathode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(
-                                           constant::c_int_an / constant::c_max_an);
+                                           constant::c_int_an / constant::c_max_an) - 0.2;
             }
         }
         if (settings::calc_temperature) {
@@ -79,11 +80,11 @@ void calc_cell_v2() {
             s.calc(u, c_s, i * constant::dt, false);
             if (i * constant::dt - s.step_control->next_output > -0.001) {
                 voltage.snapshot_value(constant::dt * i, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
-                temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));
+                if (settings::calc_temperature) temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));
                 phi_e.snapshot(constant::dt * i, u, 0);
-                c_e.snapshot(constant::dt * i, u, 1);
+                if (!settings::is_solid_battery) c_e.snapshot(constant::dt * i, u, 1);
                 phi_s.snapshot(constant::dt * i, u, 2);
-                t_dist.snapshot(constant::dt * i, u, 4);
+                if (settings::calc_temperature) t_dist.snapshot(constant::dt * i, u, 4);
                 s.print_detail();
                 s.step_control->next_output += constant::output_interval;
             }
@@ -91,10 +92,11 @@ void calc_cell_v2() {
     } else {
         s.calc(u, c_s, 0, false);
         voltage.snapshot_value(0, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+        if (settings::calc_temperature) temp.snapshot_value(0, u(dof.get_dof(0, 4)));
         phi_e.snapshot(0, u, 0);
-        c_e.snapshot(0, u, 1);
+        if (!settings::is_solid_battery) c_e.snapshot(0, u, 1);
         phi_s.snapshot(0, u, 2);
-        t_dist.snapshot(0, u, 4);
+        if (settings::calc_temperature) t_dist.snapshot(0, u, 4);
         s.print_detail();
 
         step_control.update_solution(u, c_s, 1);
@@ -113,10 +115,11 @@ void calc_cell_v2() {
             std::cout << step_control.prev_time << " " << step_control.dt_proposed << std::endl;
             if (step_control.status == StepStatus::ToNextOutput) {
                 voltage.snapshot_value(step_control.next_output, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+                if (settings::calc_temperature) temp.snapshot_value(step_control.next_output, u(dof.get_dof(0, 4)));
                 phi_e.snapshot(step_control.next_output, u, 0);
-                c_e.snapshot(step_control.next_output, u, 1);
+                if (!settings::is_solid_battery) c_e.snapshot(step_control.next_output, u, 1);
                 phi_s.snapshot(step_control.next_output, u, 2);
-                t_dist.snapshot(step_control.next_output, u, 4);
+                if (settings::calc_temperature) t_dist.snapshot(step_control.next_output, u, 4);
                 s.print_detail();
                 step_control.next_output += constant::output_interval;
             }
@@ -124,17 +127,18 @@ void calc_cell_v2() {
         }
         if (step_control.status == StepStatus::ToNextOutput) {
             voltage.snapshot_value(step_control.next_output, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
+            if (settings::calc_temperature) temp.snapshot_value(step_control.next_output, u(dof.get_dof(0, 4)));
             phi_e.snapshot(step_control.next_output, u, 0);
-            c_e.snapshot(step_control.next_output, u, 1);
+            if (!settings::is_solid_battery) c_e.snapshot(step_control.next_output, u, 1);
             phi_s.snapshot(step_control.next_output, u, 2);
-            t_dist.snapshot(step_control.next_output, u, 4);
+            if (settings::calc_temperature) t_dist.snapshot(step_control.next_output, u, 4);
             s.print_detail();
         }
     }
     voltage.export_to_csv("output/voltage.csv");
     temp.export_to_csv("output/temp.csv");
     phi_e.export_to_csv("output/phi_e.csv");
-    c_e.export_to_csv("output/c_e.csv");
+    if (!settings::is_solid_battery) c_e.export_to_csv("output/c_e.csv");
     phi_s.export_to_csv("output/phi_s.csv");
     t_dist.export_to_csv("output/temperature_dist.csv");
 }
