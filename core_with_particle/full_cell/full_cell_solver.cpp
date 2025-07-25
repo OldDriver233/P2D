@@ -97,14 +97,53 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         apply_boundary(u, k, res, false);
 
         k.makeCompressed();
-        solver.compute(k);
-        MatrixXd delta = -solver.solve(res);
-        std::cout<<std::setw(12);
-        std::cout<<u.transpose()<<std::endl;
+        VectorXd delta;
+        if (step != 0) {
+            solver.compute(k);
+            delta = -solver.solve(res);
+            std::cout<<std::setw(12);
+        } else {
+            solver.compute(k);
+            VectorXd direction = -solver.solve(res);
+            double alpha = 0.2, prev_alpha = 0;
+            int inner_iter = 0;
+
+            while (abs(alpha - prev_alpha) > 0.01 && inner_iter < 50) {
+                prev_alpha = alpha;
+                k.setZero();
+                res = VectorXd::Zero(dof.dof_cnt);
+                coeff.clear();
+                VectorXd u_a = u + alpha * direction;
+                VectorXd du_a = du + alpha * direction;
+
+                if (settings::calc_temperature) {
+                    this->anode.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                    this->sep.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                    this->cathode.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                    this->anode_collector.generate(u_a, du_a, c_s, coeff, res, step == 0);
+                    this->cathode_collector.generate(u_a, du_a, c_s, coeff, res, step == 0);
+                } else {
+                    this->anode.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                    this->sep.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                    this->cathode.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
+                }
+                k.setFromTriplets(coeff.begin(), coeff.end());
+                apply_boundary(u_a, k, res, false);
+
+                alpha = alpha - direction.dot(res) / (direction.transpose().dot(k * direction));
+                alpha = std::clamp(alpha, .01, 1.0);
+                //std::cout<<res.norm()<<std::endl;
+                inner_iter++;
+            }
+
+            delta = direction * alpha;
+        }
         du += delta;
         u += delta;
-        std::cout<<res.transpose()<<std::endl;
-        std::cout<<delta.transpose()<<std::endl;
+        //std::cout<<res.transpose()<<std::endl;
+        //std::cout<<delta.transpose()<<std::endl;
+        //std::cout<<u.transpose()<<std::endl;
+        //std::cout<<std::endl;
 
         if (step != 0) {
             if (settings::calc_temperature || settings::use_adaptive_time_step) {
@@ -120,14 +159,15 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         }
         double norm = delta.norm();
         res_norm = res.norm();
-        if (iter_time == 0) {
+        if (iter_time <= 1) {
             first_norm = res_norm;
             first_delta_norm = norm;
         } else {
             rel_tol = res_norm / first_norm;
             rel_delta = norm / first_delta_norm;
         }
-        printf("%-8d%-8d%1.5lf %1.5lf %e %e\n", step, iter_time, rel_tol, rel_delta, res_norm, norm);
+        if (iter_time == 0) printf("%-8d%-8d-       -       %e %e\n", step, iter_time, res_norm, norm);
+        else printf("%-8d%-8d%1.5lf %1.5lf %e %e\n", step, iter_time, rel_tol, rel_delta, res_norm, norm);
 
         iter_time++;
     }

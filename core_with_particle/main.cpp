@@ -41,13 +41,13 @@ void calc_cell_v2() {
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
-            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an) - 0.1;
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an);
             if (!settings::is_solid_battery) u(dof.get_dof(i, 1)) = 1;
             if (mesh.anode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = 0;
             } else if (mesh.cathode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(
-                                           constant::c_int_an / constant::c_max_an) - 0.2;
+                                           constant::c_int_an / constant::c_max_an);
             }
         }
         if (settings::calc_temperature) {
