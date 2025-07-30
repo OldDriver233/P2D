@@ -22,6 +22,7 @@ public:
     Eigen::SparseMatrix<double> assembled_A_1;
     Eigen::SparseMatrix<double> assembled_A_2;
     Eigen::SparseMatrix<double> assembled_B;
+    Eigen::SparseMatrix<double> assembled_C;
     Eigen::SparseLU<Eigen::SparseMatrix<double>> constant_solver;
     MatrixXd last_cs;
     VectorXd pre_j_coeff;
@@ -40,9 +41,11 @@ public:
         assembled_A_1 = Eigen::SparseMatrix<double>(pt_size, pt_size);
         assembled_A_2 = Eigen::SparseMatrix<double>(pt_size, pt_size);
         assembled_B = Eigen::SparseMatrix<double>(pt_size, pt_size);
+        assembled_C = Eigen::SparseMatrix<double>(pt_size, pt_size);
         std::vector<Eigen::Triplet<double>> coeff_A_1;
         std::vector<Eigen::Triplet<double>> coeff_A_2;
         std::vector<Eigen::Triplet<double>> coeff_B;
+        std::vector<Eigen::Triplet<double>> coeff_C;
         pre_j_coeff = VectorXd::Zero(pt_size);
         if (!settings::stress_analysis) pre_j_coeff(pt_size - 1) = R_s / D_sref * 4 * M_PI * constant::j_ref / c_max;
         else pre_j_coeff(pt_size - 1) = R_s / D_sref * constant::j_ref / c_max;
@@ -50,8 +53,14 @@ public:
         MatrixXd xs = get_integration_point<dim, n>();
         MatrixXd w = get_integration_weight<dim, n>();
 
-        const double eff_1 = R_s * R_s / D_sref * 4 * M_PI;
-        const double eff_2 = D_s / D_sref * 4 * M_PI;
+        double eff_1 = R_s * R_s / D_sref * 4 * M_PI;
+        double eff_2 = D_s / D_sref * 4 * M_PI;
+        double eff_3 = 1;
+        if (settings::stress_analysis) {
+            eff_1 = R_s * R_s / D_sref;
+            eff_2 = D_s / D_sref;
+            eff_3 = D_s / D_sref * c_max;
+        }
 
         for(int i = 0; i < elem_size; i++) {
             MatrixXd coords(1, n);
@@ -59,6 +68,7 @@ public:
             MatrixXd e_a_1 = MatrixXd::Zero(n, n);
             MatrixXd e_a_2 = MatrixXd::Zero(n, n);
             MatrixXd e_b = MatrixXd::Zero(n, n);
+            MatrixXd e_c = MatrixXd::Zero(n, n);
             for(int j = 0; j < n; j++) {
                 MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
                 VectorXd dNds = get_shape_deriv_at<dim, n>(xs.row(j).transpose());
@@ -77,6 +87,7 @@ public:
                 e_a_1 += dN * dN_T * x * x * w(j) * det_J * eff_2;
                 e_a_2 += N * N_T * x * x * w(j) * det_J * eff_1;
                 e_b += N * N_T * x * x * w(j) * det_J * eff_1;
+                e_c += dN * dN_T * x * x * w(j) * det_J * eff_3;
             }
 
             for(int j = 0; j < n; j++) {
@@ -84,6 +95,7 @@ public:
                     coeff_A_1.emplace_back(i + j, i + l, e_a_1(j, l));
                     coeff_A_2.emplace_back(i + j, i + l, e_a_2(j, l));
                     coeff_B.emplace_back(i + j, i + l ,e_b(j, l));
+                    coeff_C.emplace_back(i + j, i + l, e_c(j, l));
                 }
             }
         }
@@ -91,6 +103,7 @@ public:
         assembled_A_1.setFromTriplets(coeff_A_1.begin(), coeff_A_1.end());
         assembled_A_2.setFromTriplets(coeff_A_2.begin(), coeff_A_2.end());
         assembled_B.setFromTriplets(coeff_B.begin(), coeff_B.end());
+        assembled_C.setFromTriplets(coeff_C.begin(), coeff_C.end());
 
         constant_solver.compute(assembled_A_1 + assembled_A_2 / constant::dt);
         j_coeff = constant_solver.solve(pre_j_coeff);
@@ -99,6 +112,7 @@ public:
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
     double calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int type, const mesh_reader& mesh, const dof_assigner& dof);
     double calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int type, const mesh_reader& mesh, const dof_assigner& dof);
+    void get_average_concentration(const Eigen::Ref<MatrixXd> &c_s, std::vector<double>& conc, int type, const mesh_reader& mesh, const dof_assigner& dof);
 };
 
 #endif //FEM_PARTICLE_SOLVER_H

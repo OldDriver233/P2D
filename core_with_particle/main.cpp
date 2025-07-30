@@ -78,6 +78,7 @@ void calc_cell_v2() {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
             s.calc(u, c_s, i * constant::dt, false);
+            std::cout<<c_s.transpose()<<std::endl;
             if (i * constant::dt - s.step_control->next_output > -0.001) {
                 voltage.snapshot_value(constant::dt * i, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
                 if (settings::calc_temperature) temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));

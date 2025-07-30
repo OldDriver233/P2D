@@ -102,7 +102,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
 
                 int iter_round = 0;
                 double norm = 1, rel_norm = 1;
-                while (iter_round < 10 && norm / rel_norm > 1e-3) {
+                while (iter_round < 1 && norm / rel_norm > 1e-3) {
                     K.setZero();
                     b = VectorXd::Zero(particle_dof_size);
                     k_coeff.clear();
@@ -192,7 +192,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
 
                 int iter_round = 0;
                 double norm = 1, rel_norm = 1;
-                while (iter_round < 10 && norm / rel_norm > 1e-3) {
+                while (iter_round < 1 && norm / rel_norm > 1e-3) {
                     K.setZero();
                     b = VectorXd::Zero(particle_dof_size);
                     k_coeff.clear();
@@ -260,5 +260,37 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
             idx++;
         }
     }
+
     return ret;
+}
+
+void particle_solver::get_average_concentration(const Eigen::Ref<MatrixXd> &c_s, std::vector<double> &conc, int type, const mesh_reader& mesh, const dof_assigner& dof) {
+    int particle_dof = constant::particle_segment + 1;
+    if (type == 1) {
+        int idx = 0;
+        for (auto x: dof.particle_to_node) {
+            if (mesh.anode_nodes.contains(x)) {
+                double val = 0;
+                for (int i = 0; i < constant::particle_segment; i++) {
+                    double length = point_coord(i + 1) - point_coord(i);
+                    val += 0.5 * (c_s(idx * particle_dof + i, 0) + c_s(idx * particle_dof + i + 1, 0)) * length;
+                }
+                conc[idx] = val * 3;
+            }
+            idx++;
+        }
+    } else {
+        int idx = 0;
+        for (auto x: dof.particle_to_node) {
+            if (mesh.cathode_nodes.contains(x)) {
+                double val = 0;
+                for (int i = 0; i < constant::particle_segment; i++) {
+                    double length = point_coord(i + 1) - point_coord(i);
+                    val += 0.5 * (c_s(idx * particle_dof + i, 0) + c_s(idx * particle_dof + i + 1, 0)) * length;
+                }
+                conc[idx] = val * 3;
+            }
+            idx++;
+        }
+    }
 }
