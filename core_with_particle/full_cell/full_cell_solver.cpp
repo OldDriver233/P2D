@@ -146,15 +146,20 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         //std::cout<<std::endl;
 
         if (step != 0) {
-            if (settings::calc_temperature || settings::use_adaptive_time_step) {
+            if (settings::calc_temperature || settings::use_adaptive_time_step || settings::stress_analysis) {
                 double j1, j2;
-                j1 = -anode_particle.calc<false>(c_s, u, 1, mesh, dof);
-                j2 = -cathode_particle.calc<false>(c_s, u, 2, mesh, dof);
+                if (!settings::stress_analysis) {
+                    j1 = -anode_particle.calc(c_s, u, 1, mesh, dof);
+                    j2 = -cathode_particle.calc(c_s, u, 2, mesh, dof);
+                } else {
+                    j1 = -anode_particle.calc_stress(c_s, u, 1, mesh, dof);
+                    j2 = -cathode_particle.calc_stress(c_s, u, 2, mesh, dof);
+                }
                 anode.dc_ssdj = j1;
                 cathode.dc_ssdj = j2;
             } else {
-                anode_particle.calc<true>(c_s, u, 1, mesh, dof);
-                cathode_particle.calc<true>(c_s, u, 2, mesh, dof);
+                anode_particle.calc(c_s, u, 1, mesh, dof);
+                cathode_particle.calc(c_s, u, 2, mesh, dof);
             }
         }
         double norm = delta.norm();

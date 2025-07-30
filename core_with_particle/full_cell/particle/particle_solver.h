@@ -7,6 +7,7 @@
 #include <ostream>
 #include "../../constants/constant.h"
 #include "../../integration/integration_shapes.h"
+#include "../../io/settings/settings.h"
 #include "../../shaping/primitives.h"
 #include "../../mesh/mesh_reader.h"
 #include "../../mesh/dof_assigner.h"
@@ -43,7 +44,8 @@ public:
         std::vector<Eigen::Triplet<double>> coeff_A_2;
         std::vector<Eigen::Triplet<double>> coeff_B;
         pre_j_coeff = VectorXd::Zero(pt_size);
-        pre_j_coeff(pt_size - 1) = R_s / D_sref * 4 * M_PI * constant::j_ref / c_max;
+        if (!settings::stress_analysis) pre_j_coeff(pt_size - 1) = R_s / D_sref * 4 * M_PI * constant::j_ref / c_max;
+        else pre_j_coeff(pt_size - 1) = R_s / D_sref * constant::j_ref / c_max;
 
         MatrixXd xs = get_integration_point<dim, n>();
         MatrixXd w = get_integration_weight<dim, n>();
@@ -95,8 +97,8 @@ public:
     }
 
     void pre_calc(const Eigen::Ref<MatrixXd> &c_s);
-    template <bool constant_matrix>
     double calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int type, const mesh_reader& mesh, const dof_assigner& dof);
+    double calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd> &u, int type, const mesh_reader& mesh, const dof_assigner& dof);
 };
 
 #endif //FEM_PARTICLE_SOLVER_H

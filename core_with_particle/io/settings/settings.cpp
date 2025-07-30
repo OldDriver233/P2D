@@ -13,6 +13,7 @@ bool settings::calc_temperature = true;
 bool settings::use_customize_diffuse = false;
 bool settings::use_adaptive_time_step = false;
 bool settings::is_solid_battery = false;
+bool settings::stress_analysis = false;
 std::string settings::uoc_anode_path;
 std::string settings::uoc_cathode_path;
 std::string settings::kappa_path;
@@ -34,6 +35,7 @@ void settings::read(const std::string& filename) {
     TRY_READ(use_customize_kappa)
     TRY_READ(use_customize_diffuse)
     TRY_READ(is_solid_battery)
+    TRY_READ(stress_analysis)
     TRY_READ(uoc_anode_path)
     TRY_READ(uoc_cathode_path)
     TRY_READ(kappa_path)
