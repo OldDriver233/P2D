@@ -75,6 +75,10 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
     cathode_particle.pre_calc(c_s);
     //printf("Step\tIter\tRelTol\tDelta\n");
     Eigen::SparseMatrix<double> k(dof.dof_cnt, dof.dof_cnt);
+    if (step == 0) {
+        stress.generate(stress_mat_coeff, local_stress_mat_coeff);
+        stress_mat.setFromTriplets(local_stress_mat_coeff.begin(), local_stress_mat_coeff.end());
+    }
 
     while (iter_time < iter && rel_delta > tolerance) {
         k.setZero();
@@ -93,22 +97,24 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
             this->sep.generate<false>(u, du, c_s, coeff, res, step == 0, temp);
             this->cathode.generate<false>(u, du, c_s, coeff, res, step == 0, temp);
         }
+        coeff.insert(coeff.end(), stress_mat_coeff.begin(), stress_mat_coeff.end());
         k.setFromTriplets(coeff.begin(), coeff.end());
+        std::vector<double> t1, t2;
+        stress.generate_residue(u, t1, t2, res, stress_mat);
         apply_boundary(u, k, res, false);
 
-        k.makeCompressed();
         VectorXd delta;
-        if (step != 0) {
+        if (step != 0 || true) {
             solver.compute(k);
             delta = -solver.solve(res);
             std::cout<<std::setw(12);
         } else {
             solver.compute(k);
             VectorXd direction = -solver.solve(res);
-            double alpha = 0.2, prev_alpha = 0;
+            double alpha = 0.01, prev_alpha = 1;
             int inner_iter = 0;
 
-            while (abs(alpha - prev_alpha) > 0.01 && inner_iter < 50) {
+            while (abs(alpha - prev_alpha) > 0.005 && inner_iter < 50) {
                 prev_alpha = alpha;
                 k.setZero();
                 res = VectorXd::Zero(dof.dof_cnt);
@@ -131,11 +137,12 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
                 apply_boundary(u_a, k, res, false);
 
                 alpha = alpha - direction.dot(res) / (direction.transpose().dot(k * direction));
-                alpha = std::clamp(alpha, .01, 1.0);
-                //std::cout<<res.norm()<<std::endl;
+
+                std::cout<<alpha<<" "<<prev_alpha<<" "<<res.norm()<<std::endl;
                 inner_iter++;
             }
 
+            alpha = std::clamp(alpha, .001, 1.0);
             delta = direction * alpha;
         }
         du += delta;

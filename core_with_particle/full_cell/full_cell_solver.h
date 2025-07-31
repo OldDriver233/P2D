@@ -16,6 +16,7 @@
 #include "particle/particle_solver.h"
 #include "../functions/function_manager.h"
 #include "../io/output/output_manager.h"
+#include "stiffness/stiffness_stress.h"
 #include "../step_control/StepControl.h"
 
 using Eigen::MatrixXd;
@@ -35,9 +36,13 @@ public:
     stiffness_cathode cathode;
     stiffness_anode_collector anode_collector;
     stiffness_cathode_collector cathode_collector;
+    stiffness_stress stress;
     int step = 0;
     double current_time = 0.0;
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+    std::vector<Eigen::Triplet<double>> stress_mat_coeff;
+    std::vector<Eigen::Triplet<double>> local_stress_mat_coeff;
+    Eigen::SparseMatrix<double> stress_mat;
     FunctionManager manager;
     //output_manager Q_ohm, Q_rxn, Q_rev;
     //output_manager eta;
@@ -54,7 +59,8 @@ public:
         sep(mesh, dof, shapes, &manager, st),
         anode_collector(mesh, dof, shapes, st),
         cathode_collector(mesh, dof, shapes, st),
-        step_control(st)
+        step_control(st),
+        stress(mesh, dof, shapes)
     {
         /*
         element_coord = VectorXd::Zero(cacoll - ancoll);
@@ -71,6 +77,8 @@ public:
         Q_rev = output_manager(element_coord);
         eta = output_manager(element_coord);
         */
+        int dim = get_dim(mesh.p_type);
+        stress_mat = Eigen::SparseMatrix<double>(dim * mesh.node_count, dim * mesh.node_count);
     }
 
     void print_detail();

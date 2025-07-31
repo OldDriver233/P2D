@@ -41,13 +41,13 @@ void calc_cell_v2() {
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
-            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an);
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an) - 0.1;
             if (!settings::is_solid_battery) u(dof.get_dof(i, 1)) = 1;
             if (mesh.anode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = 0;
             } else if (mesh.cathode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(
-                                           constant::c_int_an / constant::c_max_an);
+                                           constant::c_int_an / constant::c_max_an) - 0.3;
             }
         }
         if (settings::calc_temperature) {
@@ -78,7 +78,6 @@ void calc_cell_v2() {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
             s.calc(u, c_s, i * constant::dt, false);
-            std::cout<<c_s.transpose()<<std::endl;
             if (i * constant::dt - s.step_control->next_output > -0.001) {
                 voltage.snapshot_value(constant::dt * i, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
                 if (settings::calc_temperature) temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));

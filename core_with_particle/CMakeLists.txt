@@ -73,6 +73,8 @@ add_executable(fem main.cpp
         mesh/dof_assigner.h
         full_cell/stiffness/pre_calc.h
         full_cell/apply_boundary.cpp
+        full_cell/stiffness/stiffness_stress.cpp
+        full_cell/stiffness/stiffness_stress.h
 )
 
 if (USE_MKL)

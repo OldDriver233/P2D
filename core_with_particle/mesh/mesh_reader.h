@@ -16,6 +16,8 @@ public:
     std::vector<std::size_t> elements;
     std::vector<std::size_t> anode_wall;
     std::vector<std::size_t> cathode_wall;
+    std::vector<std::size_t> anode_cc_wall;
+    std::vector<std::size_t> cathode_cc_wall;
     std::vector<std::size_t> anode_cc_elements;
     std::vector<std::size_t> cathode_cc_elements;
     std::vector<std::size_t> anode_elements;
@@ -28,6 +30,8 @@ public:
     std::set<std::size_t> separator_nodes;
     std::set<std::size_t> anode_wall_nodes;
     std::set<std::size_t> cathode_wall_nodes;
+    std::set<std::size_t> anode_cc_wall_nodes;
+    std::set<std::size_t> cathode_cc_wall_nodes;
     std::vector<std::size_t> node_to_idx;
     std::size_t node_count = 0;
     std::size_t elem_count = 0;

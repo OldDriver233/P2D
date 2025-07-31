@@ -14,7 +14,7 @@ using Eigen::MatrixXd;
 struct pre_calc_shapes {
     std::vector<MatrixXd> cached_matrix_N, cached_matrix_dN;
     std::vector<MatrixXd> cached_matrix_NNT, cached_matrix_dNdNT;
-    //std::vector<MatrixXd> cached_matrix_NdNT;
+    std::vector<MatrixXd> cached_matrix_N_mult;
     std::vector<double> cached_det_J;
     const mesh_reader& mesh;
     const dof_assigner& dof;
@@ -32,6 +32,7 @@ struct pre_calc_shapes {
         for (auto i = 0; i < mesh.elem_count; i++) {
             MatrixXd N(n, 1), dN(n, dim), dNdu;
             MatrixXd coord(dim, n);
+            MatrixXd Nm(dim, dim * n);
             for (auto j = 0; j < n; j++) {
                 coord.col(j) = mesh.coord.col(mesh.elements[i * n + j]);
             }
@@ -52,12 +53,19 @@ struct pre_calc_shapes {
                 MatrixXd J = coord * dNdu;
                 dN = dNdu * J.inverse();
 
+                for (int k = 0; k < dim; k++) {
+                    for (int l = 0; l < n; l++) {
+                        Nm(k, l * dim + k) = N(l, 0);
+                    }
+                }
+
                 this->cached_matrix_N.push_back(N);
                 this->cached_matrix_dN.push_back(dN);
                 //this->cached_matrix_NdNT.push_back(N * dN.transpose());
                 this->cached_matrix_NNT.push_back(N * N.transpose());
                 this->cached_matrix_dNdNT.push_back(dN * dN.transpose());
                 this->cached_det_J.push_back(J.determinant());
+                this->cached_matrix_N_mult.push_back(Nm);
             }
         }
     }
