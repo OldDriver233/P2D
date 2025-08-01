@@ -1,5 +1,6 @@
 #include "stiffness_stress.h"
 
+
 void stiffness_stress::generate(std::vector<Eigen::Triplet<double> > &t, std::vector<Eigen::Triplet<double>> &l) {
     const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type), dim_voigt = (dim * (dim + 1)) / 2;
     std::size_t node_cnt = mesh.node_count;
@@ -25,10 +26,10 @@ void stiffness_stress::generate(std::vector<Eigen::Triplet<double> > &t, std::ve
         K = MatrixXd::Zero(dim * n, dim * n);
         double E = 70e9, nu = .26;
         double E_ref = 70e9;
-        double lambda = (nu * E) / ((1 + nu) * (1 - 2 * nu)), mu = E / (2 * (1 + nu));
-        C << lambda + 2 * mu, lambda, 0,
-             lambda, lambda + 2 * mu, 0,
-             0, 0, mu;
+        C << 1, nu, 0,
+             nu, 1, 0,
+             0, 0, (1 - nu) / 2;
+        C = C * E / (1 - nu * nu);
 
         for (int j = 0; j < n; j++) {
             const MatrixXd &Ns = shapes.cached_matrix_N[e * n + j];
@@ -74,6 +75,7 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
     const std::vector<double> avg_c_ca, Eigen::Ref<VectorXd> res, const Eigen::Ref<Eigen::SparseMatrix<double>>& K) {
     const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type), dim_voigt = (dim * (dim + 1)) / 2;
     std::size_t node_cnt = mesh.node_count;
+    double E_ref = 70e9;
 
     MatrixXd xs;
     MatrixXd w;
@@ -102,7 +104,23 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
 
 
     for (int e = 0; e < mesh.elem_count; e++) {
-        // Load here
+        VectorXd e_load = VectorXd::Zero(n * dim);
+        for (int j = 0; j < n; j++) {
+            const MatrixXd &N = shapes.cached_matrix_N_mult[e * n + j];
+            const double det = shapes.cached_det_J[e * n + j];
+            VectorXd F(2);
+            F<<1000, 0;
+            e_load += N.transpose() * F * w(j) * det / E_ref;
+        }
+
+
+        for (int j = 0; j < n * dim; j++) {
+            std::size_t id_l = mesh.elements[e * n + j / dim];
+            std::size_t dof_l = 5 + j % dim;
+            if (!mesh.anode_cc_wall_nodes.contains(id_l)) {
+                load(id_l * dim + dof_l - 5) += e_load(j);
+            }
+        }
     }
 
     VectorXd local_res = K * local_u - load;

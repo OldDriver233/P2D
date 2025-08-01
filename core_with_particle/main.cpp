@@ -74,6 +74,8 @@ void calc_cell_v2() {
     output_manager phi_e(mesh, dof);
     output_manager phi_s(mesh, dof);
     output_manager t_dist(mesh, dof);
+    output_manager disp_u(mesh, dof);
+    output_manager disp_v(mesh, dof);
     if (!settings::use_adaptive_time_step) {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
@@ -85,6 +87,9 @@ void calc_cell_v2() {
                 if (!settings::is_solid_battery) c_e.snapshot(constant::dt * i, u, 1);
                 phi_s.snapshot(constant::dt * i, u, 2);
                 if (settings::calc_temperature) t_dist.snapshot(constant::dt * i, u, 4);
+                disp_u.snapshot(0, u, 5);
+                disp_v.snapshot(0, u, 6);
+
                 s.print_detail();
                 s.step_control->next_output += constant::output_interval;
             }
@@ -141,6 +146,8 @@ void calc_cell_v2() {
     if (!settings::is_solid_battery) c_e.export_to_csv("output/c_e.csv");
     phi_s.export_to_csv("output/phi_s.csv");
     t_dist.export_to_csv("output/temperature_dist.csv");
+    disp_u.export_to_csv("output/u.csv");
+    disp_v.export_to_csv("output/v.csv");
 }
 
 void calc_cell() {

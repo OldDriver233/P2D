@@ -68,7 +68,7 @@ mesh_reader::mesh_reader(const std::string &filename) {
     gmsh::model::mesh::getElements(e_type, elem_tag, node_tag, dim, tag);\
     assert(e_type.size() == 1);
     this->anode_cc_wall = node_tag[0];
-    for (auto &x: this->anode_wall) {
+    for (auto &x: this->anode_cc_wall) {
         x -= 1;
         this->anode_cc_wall_nodes.emplace(x);
     }
@@ -77,7 +77,7 @@ mesh_reader::mesh_reader(const std::string &filename) {
     gmsh::model::mesh::getElements(e_type, elem_tag, node_tag, dim, tag);\
     assert(e_type.size() == 1);
     this->cathode_cc_wall = node_tag[0];
-    for (auto &x: this->cathode_wall) {
+    for (auto &x: this->cathode_cc_wall) {
         x -= 1;
         this->cathode_cc_wall_nodes.emplace(x);
     }
