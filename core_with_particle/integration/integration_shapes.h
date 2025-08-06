@@ -7,6 +7,7 @@
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::numbers::inv_sqrt3_v;
+using std::numbers::sqrt3_v;
 
 template<int dim, int N>
 inline int get_integration_point_count() {
@@ -78,6 +79,31 @@ inline VectorXd get_integration_weight() {
                 1,
                 1,
                 1;
+        }
+    }
+    return m;
+}
+
+template<int dim, int N>
+inline MatrixXd get_extrapolation_weight() {
+    int pts = get_integration_point_count<dim, N>();
+    MatrixXd m(pts, pts);
+
+    if constexpr (dim == 1) {
+        if constexpr (N == 2) {
+            m << sqrt3_v<double> / 2 + 0.5, 0.5 - sqrt3_v<double> / 2,
+                 0.5 - sqrt3_v<double> / 2, sqrt3_v<double> / 2 + 0.5;
+        }
+    } else if constexpr (dim == 2) {
+        if constexpr (N == 3) {
+            m << 2, -0.5, -0.5,
+                 -0.5, 2, -0.5,
+                 -0.5, -0.5, 2;
+        } else if constexpr (N == 4) {
+            m << sqrt3_v<double> / 2 + 1, -0.5, 1 - sqrt3_v<double> / 2, -0.5,
+                 -0.5, sqrt3_v<double> / 2 + 1, -0.5, 1 - sqrt3_v<double> / 2,
+                 1 - sqrt3_v<double> / 2, -0.5, sqrt3_v<double> / 2 + 1, -0.5,
+                 -0.5, 1 - sqrt3_v<double> / 2, -0.5, sqrt3_v<double> / 2 + 1;
         }
     }
     return m;

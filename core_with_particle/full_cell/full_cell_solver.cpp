@@ -60,7 +60,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
 }
 */
 
-void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, double time, bool do_print) {
+void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, std::vector<double>& v_stress, double time, bool do_print) {
     int iter_time = 0;
     double first_norm, first_delta_norm;
     double res_norm = 1.0;
@@ -99,8 +99,10 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
         }
         coeff.insert(coeff.end(), stress_mat_coeff.begin(), stress_mat_coeff.end());
         k.setFromTriplets(coeff.begin(), coeff.end());
-        std::vector<double> t1, t2;
-        stress.generate_residue(u, t1, t2, res, stress_mat);
+        std::vector<double> t(dof.particle_to_node.size());
+        anode_particle.get_average_concentration(c_s, t, 1, mesh, dof);
+        cathode_particle.get_average_concentration(c_s, t, 2, mesh, dof);
+        stress.generate_residue(u, t, res, stress_mat);
         apply_boundary(u, k, res, false);
 
         VectorXd delta;
@@ -169,6 +171,7 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, do
                 cathode_particle.calc(c_s, u, 2, mesh, dof);
             }
         }
+        stress.stress_output(u, v_stress);
         double norm = delta.norm();
         res_norm = res.norm();
         if (iter_time <= 1) {

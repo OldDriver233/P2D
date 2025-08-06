@@ -82,7 +82,7 @@ public:
     }
 
     void print_detail();
-    void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, double, bool);
+    void calc(Eigen::Ref<MatrixXd>, Eigen::Ref<MatrixXd>, std::vector<double>&, double, bool);
     void apply_boundary(Eigen::Ref<MatrixXd>, Eigen::SparseMatrix<double> &,
                         Eigen::Ref<VectorXd>, bool);
 };

@@ -39,6 +39,8 @@ void calc_cell_v2() {
     VectorXd u = VectorXd::Zero(dof.dof_cnt);
     std::cout<<"This task has "<<dof.dof_cnt<<" DoFs.\n";
     MatrixXd c_s = MatrixXd::Zero(eff_size * (constant::particle_segment + 1), 1);
+    std::vector<double> stress;
+
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
             u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an) - 0.1;
@@ -76,10 +78,14 @@ void calc_cell_v2() {
     output_manager t_dist(mesh, dof);
     output_manager disp_u(mesh, dof);
     output_manager disp_v(mesh, dof);
+    output_manager stress_11(mesh, dof);
+    output_manager stress_22(mesh, dof);
+    output_manager stress_33(mesh, dof);
+    output_manager stress_12(mesh, dof);
     if (!settings::use_adaptive_time_step) {
         for (int i = 0; i <= constant::step; i++) {
             step_control.dt_now = constant::dt;
-            s.calc(u, c_s, i * constant::dt, false);
+            s.calc(u, c_s, stress, i * constant::dt, false);
             if (i * constant::dt - s.step_control->next_output > -0.001) {
                 voltage.snapshot_value(constant::dt * i, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
                 if (settings::calc_temperature) temp.snapshot_value(constant::dt * i, u(dof.get_dof(0, 4)));
@@ -87,33 +93,43 @@ void calc_cell_v2() {
                 if (!settings::is_solid_battery) c_e.snapshot(constant::dt * i, u, 1);
                 phi_s.snapshot(constant::dt * i, u, 2);
                 if (settings::calc_temperature) t_dist.snapshot(constant::dt * i, u, 4);
-                disp_u.snapshot(0, u, 5);
-                disp_v.snapshot(0, u, 6);
+                disp_u.snapshot(constant::dt * i, u, 5);
+                disp_v.snapshot(constant::dt * i, u, 6);
+                stress_11.snapshot_vector(constant::dt * i, stress, 0);
+                stress_22.snapshot_vector(constant::dt * i, stress, 1);
+                stress_33.snapshot_vector(constant::dt * i, stress, 2);
+                stress_12.snapshot_vector(constant::dt * i, stress, 3);
 
                 s.print_detail();
                 s.step_control->next_output += constant::output_interval;
             }
         }
     } else {
-        s.calc(u, c_s, 0, false);
+        s.calc(u, c_s, stress, 0, false);
         voltage.snapshot_value(0, u(dof.get_dof(*mesh.cathode_wall_nodes.begin(), 2)) - u(dof.get_dof(*mesh.anode_wall_nodes.begin(), 2)));
         if (settings::calc_temperature) temp.snapshot_value(0, u(dof.get_dof(0, 4)));
         phi_e.snapshot(0, u, 0);
         if (!settings::is_solid_battery) c_e.snapshot(0, u, 1);
         phi_s.snapshot(0, u, 2);
         if (settings::calc_temperature) t_dist.snapshot(0, u, 4);
+        disp_u.snapshot(0, u, 5);
+        disp_v.snapshot(0, u, 6);
+        stress_11.snapshot_vector(0, stress, 0);
+        stress_22.snapshot_vector(0, stress, 1);
+        stress_33.snapshot_vector(0, stress, 2);
+        stress_12.snapshot_vector(0, stress, 3);
         s.print_detail();
 
         step_control.update_solution(u, c_s, 1);
         step_control.next_output = constant::output_interval;
         while (step_control.prev_time < constant::finish_time) {
-            s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+            s.calc(u, c_s, stress, step_control.prev_time + step_control.dt_now, false);
             step_control.update_solution(u, c_s, 0);
             step_control.update_dt();
             while (step_control.status == StepStatus::NeedRecalc) {
                 u = step_control.u_hist[1];
                 c_s = step_control.c_s_hist[1];
-                s.calc(u, c_s, step_control.prev_time + step_control.dt_now, false);
+                s.calc(u, c_s, stress, step_control.prev_time + step_control.dt_now, false);
                 step_control.update_solution(u, c_s, 0);
                 step_control.update_dt();
             }
@@ -125,6 +141,12 @@ void calc_cell_v2() {
                 if (!settings::is_solid_battery) c_e.snapshot(step_control.next_output, u, 1);
                 phi_s.snapshot(step_control.next_output, u, 2);
                 if (settings::calc_temperature) t_dist.snapshot(step_control.next_output, u, 4);
+                disp_u.snapshot(0, u, 5);
+                disp_v.snapshot(0, u, 6);
+                stress_11.snapshot_vector(step_control.next_output, stress, 0);
+                stress_22.snapshot_vector(step_control.next_output, stress, 1);
+                stress_33.snapshot_vector(step_control.next_output, stress, 2);
+                stress_12.snapshot_vector(step_control.next_output, stress, 3);
                 s.print_detail();
                 step_control.next_output += constant::output_interval;
             }
@@ -137,6 +159,12 @@ void calc_cell_v2() {
             if (!settings::is_solid_battery) c_e.snapshot(step_control.next_output, u, 1);
             phi_s.snapshot(step_control.next_output, u, 2);
             if (settings::calc_temperature) t_dist.snapshot(step_control.next_output, u, 4);
+            disp_u.snapshot(0, u, 5);
+            disp_v.snapshot(0, u, 6);
+            stress_11.snapshot_vector(step_control.next_output, stress, 0);
+            stress_22.snapshot_vector(step_control.next_output, stress, 1);
+            stress_33.snapshot_vector(step_control.next_output, stress, 2);
+            stress_12.snapshot_vector(step_control.next_output, stress, 3);
             s.print_detail();
         }
     }
@@ -148,6 +176,10 @@ void calc_cell_v2() {
     t_dist.export_to_csv("output/temperature_dist.csv");
     disp_u.export_to_csv("output/u.csv");
     disp_v.export_to_csv("output/v.csv");
+    stress_11.export_to_csv("output/stress_xx.csv");
+    stress_22.export_to_csv("output/stress_yy.csv");
+    stress_33.export_to_csv("output/stress_zz.csv");
+    stress_12.export_to_csv("output/stress_xy.csv");
 }
 
 void calc_cell() {

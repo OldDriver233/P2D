@@ -15,6 +15,7 @@ for (auto &x: node_tag[0]) {\
 }\
 for (auto i = 0; i < elem_tag[0].size(); i++){\
     this->ty##_elements.emplace_back(elem_count++);\
+    this->ty##_element_set.emplace(elem_count - 1);\
 }
 
 mesh_reader::mesh_reader(const std::string &filename) {

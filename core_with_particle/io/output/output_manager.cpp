@@ -22,6 +22,15 @@ void output_manager::snapshot_value(double timestamp, double value) {
     this->vals.push_back(val);
 }
 
+void output_manager::snapshot_vector(double timestamp, const std::vector<double> &v, int dof) {
+    this->times.push_back(timestamp);
+    VectorXd val(this->mesh.node_count);
+    for (int i = 0; i < this->mesh.node_count; i++) {
+        val(i) = v[4 * i + dof];
+    }
+    this->vals.push_back(val);
+}
+
 
 void output_manager::export_to_csv(const std::string &filename) const {
     std::fstream f(filename, std::ios::out);

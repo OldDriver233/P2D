@@ -19,11 +19,14 @@ public:
                      const pre_calc_shapes &shapes): mesh(mesh), dof(dof), shapes(shapes) {
     }
 
+    std::tuple<double, double> get_material_property(std::size_t element) const;
+
     void generate(std::vector<Eigen::Triplet<double> > &t, std::vector<Eigen::Triplet<double> > &l);
 
-    void generate_residue(const Eigen::Ref<MatrixXd> &u, const std::vector<double> avg_c_an,
-                          const std::vector<double> avg_c_ca, Eigen::Ref<VectorXd> res,
+    void generate_residue(const Eigen::Ref<MatrixXd> &u, const std::vector<double> avg_c, Eigen::Ref<VectorXd> res,
                           const Eigen::Ref<Eigen::SparseMatrix<double>>& K);
+
+    void stress_output(const Eigen::Ref<MatrixXd> &u, std::vector<double> &s) const;
 };
 
 #endif //STIFFNESS_STRESS_H

@@ -265,17 +265,35 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
 }
 
 void particle_solver::get_average_concentration(const Eigen::Ref<MatrixXd> &c_s, std::vector<double> &conc, int type, const mesh_reader& mesh, const dof_assigner& dof) {
-    int particle_dof = constant::particle_segment + 1;
+    const int dim = 1, n = 2;
+    MatrixXd xs = get_integration_point<dim, n>();
+    MatrixXd w = get_integration_weight<dim, n>();
+    int particle_dof_size = constant::particle_segment + 1;
     if (type == 1) {
         int idx = 0;
         for (auto x: dof.particle_to_node) {
             if (mesh.anode_nodes.contains(x)) {
                 double val = 0;
                 for (int i = 0; i < constant::particle_segment; i++) {
-                    double length = point_coord(i + 1) - point_coord(i);
-                    val += 0.5 * (c_s(idx * particle_dof + i, 0) + c_s(idx * particle_dof + i + 1, 0)) * length;
+                    MatrixXd coords(1, n);
+                    coords << point_coord(i), point_coord(i + 1);
+                    MatrixXd e_ss(n, 1);
+                    e_ss << c_s(idx * particle_dof_size + i, 0), c_s(idx * particle_dof_size + i + 1, 0);
+                    for (int j = 0; j < n; j++) {
+                        MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
+                        MatrixXd N_T = N.transpose();
+
+                        double s = xs(j);
+                        double lower = coords(0, 0);
+                        double upper = coords(0, 1);
+                        double x = lower + (s + 1) * (upper - lower) / 2;
+                        double ele_c = (N_T * e_ss).value();
+                        double length = (upper - lower) / 2;
+
+                        val += x * x * ele_c * length * w(j);
+                    }
                 }
-                conc[idx] = val * 3;
+                conc[idx] = val * 3 * c_max;
             }
             idx++;
         }
@@ -285,10 +303,25 @@ void particle_solver::get_average_concentration(const Eigen::Ref<MatrixXd> &c_s,
             if (mesh.cathode_nodes.contains(x)) {
                 double val = 0;
                 for (int i = 0; i < constant::particle_segment; i++) {
-                    double length = point_coord(i + 1) - point_coord(i);
-                    val += 0.5 * (c_s(idx * particle_dof + i, 0) + c_s(idx * particle_dof + i + 1, 0)) * length;
+                    MatrixXd coords(1, n);
+                    coords << point_coord(i), point_coord(i + 1);
+                    MatrixXd e_ss(n, 1);
+                    e_ss << c_s(idx * particle_dof_size + i, 0), c_s(idx * particle_dof_size + i + 1, 0);
+                    for (int j = 0; j < n; j++) {
+                        MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
+                        MatrixXd N_T = N.transpose();
+
+                        double s = xs(j);
+                        double lower = coords(0, 0);
+                        double upper = coords(0, 1);
+                        double x = lower + (s + 1) * (upper - lower) / 2;
+                        double ele_c = (N_T * e_ss).value();
+                        double length = (upper - lower) / 2;
+
+                        val += x * x * ele_c * length * w(j);
+                    }
                 }
-                conc[idx] = val * 3;
+                conc[idx] = val * 3 * c_max;
             }
             idx++;
         }

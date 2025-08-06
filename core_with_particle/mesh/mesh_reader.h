@@ -32,6 +32,11 @@ public:
     std::set<std::size_t> cathode_wall_nodes;
     std::set<std::size_t> anode_cc_wall_nodes;
     std::set<std::size_t> cathode_cc_wall_nodes;
+    std::set<std::size_t> anode_cc_element_set;
+    std::set<std::size_t> cathode_cc_element_set;
+    std::set<std::size_t> anode_element_set;
+    std::set<std::size_t> cathode_element_set;
+    std::set<std::size_t> separator_element_set;
     std::vector<std::size_t> node_to_idx;
     std::size_t node_count = 0;
     std::size_t elem_count = 0;

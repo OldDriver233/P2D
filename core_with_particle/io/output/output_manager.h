@@ -20,6 +20,7 @@ public:
 
     void snapshot(double timestamp, const Eigen::Ref<VectorXd>& u, int dof_category);
     void snapshot_value(double timestamp, double value);
+    void snapshot_vector(double timestamp, const std::vector<double>& v, int dof);
     void export_to_csv(const std::string& filename) const;
 };
 
