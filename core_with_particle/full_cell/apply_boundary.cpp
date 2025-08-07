@@ -9,10 +9,10 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
         res(dof_id) = -(0 - u(dof_id, 0));
     }
 
-    double eff_mat_s_ca = std::pow(constant::epsilon_s_ca, constant::bruggeman);
-    double eff_mat_s_an = std::pow(constant::epsilon_s_an, constant::bruggeman);
-    double sigma_ref_an = constant::sigma_an * eff_mat_s_an;
-    double sigma_ref_ca = constant::sigma_ca * eff_mat_s_ca;
+    double eff_mat_s_ca = std::pow(constant::cathode.epsilon_s, constant::bruggeman);
+    double eff_mat_s_an = std::pow(constant::anode.epsilon_s, constant::bruggeman);
+    double sigma_ref_an = constant::anode.sigma * eff_mat_s_an;
+    double sigma_ref_ca = constant::cathode.sigma * eff_mat_s_ca;
 
     if (dim == 1) {
         for (auto x: mesh.cathode_wall_nodes) {

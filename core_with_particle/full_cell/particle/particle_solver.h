@@ -30,11 +30,11 @@ public:
     const double D_s;
     const double D_sref;
     const double c_max;
+    const double R_s;
     StepControl* step_control;
 
-    particle_solver(const VectorXd& coord, const double D_s, const double c_max, StepControl* st): point_coord(coord), D_s(D_s), D_sref(D_s), c_max(c_max), step_control(st) {
+    particle_solver(const VectorXd& coord, const double D_s, const double c_max, const double r_p, StepControl* st): point_coord(coord), D_s(D_s), D_sref(D_s), c_max(c_max), R_s(r_p), step_control(st) {
         const int dim = 1, n = 2;
-        const double R_s = constant::r_p;
         int pt_size = coord.size();
         int elem_size = pt_size - 1;
 

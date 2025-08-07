@@ -36,23 +36,23 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
     }
 
     const double dt = this->st->dt_now;
-    const double R_p = constant::r_p;
-    const double a = 3 * constant::epsilon_s_an / constant::r_p;
-    const double eff_mat = std::pow(constant::epsilon_e_an, constant::bruggeman);
-    const double eff_mat_s = std::pow(constant::epsilon_s_an, constant::bruggeman);
-    const double d_ref = constant::de_an;
+    const double R_p = constant::anode.r_p;
+    const double a = 3 * constant::anode.epsilon_s / R_p;
+    const double eff_mat = std::pow(constant::anode.epsilon_e, constant::bruggeman);
+    const double eff_mat_s = std::pow(constant::anode.epsilon_s, constant::bruggeman);
+    const double d_ref = constant::anode.D_e;
     //const double d_eff = constant::de_an / d_ref * eff_mat;
     //const double ds_eff = constant::ds_an / d_ref;
-    const double sigma_ref = constant::sigma_an * eff_mat_s;
-    const double sigma_eff = constant::sigma_an / sigma_ref * eff_mat_s;
-    const double epsilon = constant::epsilon_e_an;
-    const double epsilon_s = constant::epsilon_s_an;
-    const double c_max = constant::c_max_an;
+    const double sigma_ref = constant::anode.sigma * eff_mat_s;
+    const double sigma_eff = constant::anode.sigma / sigma_ref * eff_mat_s;
+    const double epsilon = constant::anode.epsilon_e;
+    const double epsilon_s = constant::anode.epsilon_s;
+    const double c_max = constant::anode.c_max;
     const double ce_int = constant::ce_int;
     const double j_ref = constant::j_ref;
     const double F = constant::F;
     const double ce_root = std::sqrt(ce_int);
-    const double rho = constant::density_an, cap = constant::capacity_an, lambda = constant::lambda_an;
+    const double rho = constant::anode.density, cap = constant::anode.capacity, lambda = constant::anode.lambda;
 
     // Here we take out the evaluation of the functions for vectorization purpose.
     // TODO: Extract the code below to one method
@@ -198,7 +198,7 @@ void stiffness_anode::generate(const Eigen::Ref<MatrixXd> &u,
         if (!settings::use_customize_diffuse) {
             for (int i = 0; i < mesh.anode_elements.size(); ++i) {
                 for (int j = 0; j < n; j++) {
-                    arr_d_eff[i * n + j] = constant::de_an / d_ref * eff_mat;
+                    arr_d_eff[i * n + j] = constant::anode.D_e / d_ref * eff_mat;
                 }
             }
         } else {

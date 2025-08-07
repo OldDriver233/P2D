@@ -75,6 +75,9 @@ add_executable(fem main.cpp
         full_cell/apply_boundary.cpp
         full_cell/stiffness/stiffness_stress.cpp
         full_cell/stiffness/stiffness_stress.h
+        constants/material/current_collector.h
+        constants/material/separator.h
+        constants/material/active_material.h
 )
 
 if (USE_MKL)

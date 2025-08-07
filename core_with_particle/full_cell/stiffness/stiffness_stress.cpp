@@ -5,17 +5,20 @@
 std::tuple<double, double> stiffness_stress::get_material_property(std::size_t element) const {
     double E, nu;
     if (mesh.anode_element_set.contains(element)) {
-        E = 70e9;
-        nu = .26;
+        E = constant::anode.E;
+        nu = constant::anode.nu;
     } else if (mesh.cathode_element_set.contains(element)) {
-        E = 12e9;
-        nu = .3;
+        E = constant::cathode.E;
+        nu = constant::cathode.nu;
     } else if (mesh.separator_element_set.contains(element)) {
-        E = 77e9;
-        nu = .22;
-    } else if (mesh.anode_cc_element_set.contains(element) || mesh.cathode_cc_element_set.contains(element)) {
-        E = 200e9;
-        nu = .29;
+        E = constant::separator.E;
+        nu = constant::separator.nu;
+    } else if (mesh.anode_cc_element_set.contains(element)) {
+        E = constant::anode_cc.E;
+        nu = constant::anode_cc.nu;
+    } else if (mesh.cathode_cc_element_set.contains(element)) {
+        E = constant::cathode_cc.E;
+        nu = constant::cathode_cc.nu;
     }
     return std::make_tuple(E, nu);
 }
@@ -117,12 +120,13 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
             VectorXd avg = VectorXd::Zero(n);
             VectorXd e_load = VectorXd::Zero(n * dim);
             auto [E, nu] = this->get_material_property(e);
-            double omega = -7.28e-7;
             const double E_ref = 70e9;
-            double c_int = constant::c_int_an;
+
+            double omega = constant::anode.omega;
+            double c_int = constant::anode.c_int;
             if (mesh.cathode_element_set.contains(e)) {
-                omega = 4e-6;
-                c_int = constant::c_int_ca;
+                omega = constant::cathode.omega;
+                c_int = constant::cathode.c_int;
             }
 
             MatrixXd C(dim_voigt, dim_voigt);

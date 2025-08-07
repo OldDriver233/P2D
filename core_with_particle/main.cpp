@@ -43,13 +43,13 @@ void calc_cell_v2() {
 
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
-            u(dof.get_dof(i, 0)) = -uoc<1>(constant::c_int_an / constant::c_max_an) - 0.1;
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::anode.c_int / constant::anode.c_max) - 0.1;
             if (!settings::is_solid_battery) u(dof.get_dof(i, 1)) = 1;
             if (mesh.anode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = 0;
             } else if (mesh.cathode_nodes.contains(i)) {
-                u(dof.get_dof(i, 2)) = uoc<2>(constant::c_int_ca / constant::c_max_ca) - uoc<1>(
-                                           constant::c_int_an / constant::c_max_an) - 0.3;
+                u(dof.get_dof(i, 2)) = uoc<2>(constant::cathode.c_int / constant::cathode.c_max) - uoc<1>(
+                                           constant::anode.c_int / constant::anode.c_max) - 0.3;
             }
         }
         if (settings::calc_temperature) {
@@ -60,11 +60,11 @@ void calc_cell_v2() {
         for (auto x: dof.particle_to_node) {
             if (mesh.anode_nodes.contains(x)) {
                 for (int j = 0; j < constant::particle_segment + 1; j++) {
-                    c_s(i * (constant::particle_segment + 1) + j) = constant::c_int_an / constant::c_max_an;
+                    c_s(i * (constant::particle_segment + 1) + j) = constant::anode.c_int / constant::anode.c_max;
                 }
             } else {
                 for (int j = 0; j < constant::particle_segment + 1; j++) {
-                    c_s(i * (constant::particle_segment + 1) + j) = constant::c_int_ca / constant::c_max_ca;
+                    c_s(i * (constant::particle_segment + 1) + j) = constant::cathode.c_int / constant::cathode.c_max;
                 }
             }
             i++;

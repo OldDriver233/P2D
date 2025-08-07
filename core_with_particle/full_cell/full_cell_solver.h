@@ -52,8 +52,8 @@ public:
 
     full_cell_solver(const mesh_reader& mesh, const dof_assigner& dof, VectorXd &particle_coord, StepControl* st)
         : mesh(mesh), dof(dof), shapes(mesh, dof),
-        anode_particle(particle_coord, constant::ds_an, constant::c_max_an, st),
-        cathode_particle(particle_coord, constant::ds_ca, constant::c_max_ca, st),
+        anode_particle(particle_coord, constant::anode.D_s, constant::anode.c_max, constant::anode.r_p, st),
+        cathode_particle(particle_coord, constant::cathode.D_s, constant::cathode.c_max, constant::cathode.r_p, st),
         anode(mesh, dof, shapes, -anode_particle.j_coeff(constant::particle_segment), &manager, st),
         cathode(mesh, dof, shapes, -cathode_particle.j_coeff(constant::particle_segment), &manager, st),
         sep(mesh, dof, shapes, &manager, st),

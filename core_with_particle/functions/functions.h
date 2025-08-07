@@ -25,24 +25,24 @@ inline double d_bv(double eta, double T) {
 
 template<int type>
 inline double j0(double c_e, double c_a, double t) {
-    const double k = (type == 1 ? constant::k_an : constant::k_ca);
-    const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
+    const double k = (type == 1 ? constant::anode.k : constant::cathode.k);
+    const double E = (type == 1 ? constant::anode.exchange_energy : constant::cathode.exchange_energy);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
     return k_ref * std::sqrt(c_e * (1 - c_a) * c_a);
 }
 
 template<int type>
 inline double d_j0_e(double c_e, double c_a, double t) {
-    const double k = (type == 1 ? constant::k_an : constant::k_ca);
-    const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
+    const double k = (type == 1 ? constant::anode.k : constant::cathode.k);
+    const double E = (type == 1 ? constant::anode.exchange_energy : constant::cathode.exchange_energy);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
     return k_ref * std::sqrt(c_a * (1 - c_a)) / std::sqrt(c_e) * 0.5;
 }
 
 template<int type>
 inline double d_j0_a(double c_e, double c_a, double t) {
-    const double k = (type == 1 ? constant::k_an : constant::k_ca);
-    const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
+    const double k = (type == 1 ? constant::anode.k : constant::cathode.k);
+    const double E = (type == 1 ? constant::anode.exchange_energy : constant::cathode.exchange_energy);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
     return -k_ref * std::sqrt(c_e) * std::sqrt(c_a) * 0.5 / std::sqrt(1 - c_a) +
            k_ref * std::sqrt(1 - c_a) * std::sqrt(c_e) * 0.5 / std::sqrt(c_a);
@@ -50,8 +50,8 @@ inline double d_j0_a(double c_e, double c_a, double t) {
 
 template<int type>
 inline double d_j0_t(double c_e, double c_a, double t) {
-    const double k = (type == 1 ? constant::k_an : constant::k_ca);
-    const double E = (type == 1 ? constant::exchange_energy_an : constant::exchange_energy_ca);
+    const double k = (type == 1 ? constant::anode.k : constant::cathode.k);
+    const double E = (type == 1 ? constant::anode.exchange_energy : constant::cathode.exchange_energy);
     const double k_ref = k * exp((1 / t - 1 / constant::t_ref) * -E / constant::R);
     return E / constant::R * k_ref / (t * t);
 }

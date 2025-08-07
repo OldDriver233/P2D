@@ -9,7 +9,7 @@ void stiffness_anode_collector::generate(const Eigen::Ref<MatrixXd> &u,
     const double I_app = constant::I_app;
     const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type);
     std::size_t node_cnt = mesh.node_count;
-    const double rho = constant::density_an_collector, cap = constant::capacity_an_collector, lambda = constant::lambda_an_collector, sigma = constant::sigma_an_collector;
+    const double rho = constant::anode_cc.density, cap = constant::anode_cc.capacity, lambda = constant::anode_cc.lambda, sigma = constant::anode_cc.sigma;
 
     MatrixXd xs;
     MatrixXd w;

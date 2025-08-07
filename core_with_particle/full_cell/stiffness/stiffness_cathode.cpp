@@ -32,23 +32,23 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
     }
 
     const double dt = this->st->dt_now;
-    const double R_p = constant::r_p;
-    const double a = 3 * constant::epsilon_s_ca / constant::r_p;
-    const double eff_mat = std::pow(constant::epsilon_e_ca, constant::bruggeman);
-    const double eff_mat_s = std::pow(constant::epsilon_s_ca, constant::bruggeman);
-    const double d_ref = constant::de_ca;
+    const double R_p = constant::cathode.r_p;
+    const double a = 3 * constant::cathode.epsilon_s / R_p;
+    const double eff_mat = std::pow(constant::cathode.epsilon_e, constant::bruggeman);
+    const double eff_mat_s = std::pow(constant::cathode.epsilon_s, constant::bruggeman);
+    const double d_ref = constant::cathode.D_e;
     //const double d_eff = constant::de_ca / d_ref * eff_mat;
     //const double ds_eff = constant::ds_ca / d_ref;
-    const double sigma_ref = constant::sigma_ca * eff_mat_s;
-    const double sigma_eff = constant::sigma_ca / sigma_ref * eff_mat_s;
-    const double epsilon = constant::epsilon_e_ca;
-    const double epsilon_s = constant::epsilon_s_ca;
-    const double c_max = constant::c_max_ca;
+    const double sigma_ref = constant::cathode.sigma * eff_mat_s;
+    const double sigma_eff = constant::cathode.sigma / sigma_ref * eff_mat_s;
+    const double epsilon = constant::cathode.epsilon_e;
+    const double epsilon_s = constant::cathode.epsilon_s;
+    const double c_max = constant::cathode.c_max;
     const double ce_int = constant::ce_int;
     const double j_ref = constant::j_ref;
     const double F = constant::F;
     const double ce_root = std::sqrt(ce_int);
-    const double rho = constant::density_ca, cap = constant::capacity_ca, lambda = constant::lambda_ca;
+    const double rho = constant::cathode.density, cap = constant::cathode.capacity, lambda = constant::cathode.lambda;
 
     const int simd_size = mesh.cathode_nodes.size();
 
@@ -192,7 +192,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
         if (!settings::use_customize_diffuse) {
             for (int i = 0; i < mesh.cathode_elements.size(); ++i) {
                 for (int j = 0; j < n; j++) {
-                    arr_d_eff[i * n + j] = constant::de_ca / d_ref * eff_mat;
+                    arr_d_eff[i * n + j] = constant::cathode.D_e / d_ref * eff_mat;
                 }
             }
         } else {

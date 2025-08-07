@@ -22,7 +22,7 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
                     } else {
                         T = constant::t_ref;
                     }
-                    double coeff = exp(constant::diffuse_energy_an / constant::R * (-1 / T + 1 / constant::t_ref));
+                    double coeff = exp(constant::anode.diffuse_energy / constant::R * (-1 / T + 1 / constant::t_ref));
                     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                     solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                     j_coeff = solver_A.solve(pre_j_coeff);
@@ -49,7 +49,7 @@ double particle_solver::calc(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<MatrixXd
                     } else {
                         T = constant::t_ref;
                     }
-                    double coeff = exp(constant::diffuse_energy_ca / constant::R * (-1 / T + 1 / constant::t_ref));
+                    double coeff = exp(constant::cathode.diffuse_energy / constant::R * (-1 / T + 1 / constant::t_ref));
                     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver_A;
                     solver_A.compute(assembled_A_1 * coeff + assembled_A_2 / this->step_control->dt_now);
                     j_coeff = solver_A.solve(pre_j_coeff);
@@ -73,7 +73,6 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
     int particle_dof_size = constant::particle_segment + 1;
     double ret = 0.0;
     const int dim = 1, n = 2;
-    const double R_s = constant::r_p;
     double dt;
     if (settings::use_adaptive_time_step) {
         dt = step_control->dt_now;
@@ -92,7 +91,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
 
             if (mesh.anode_nodes.contains(x)) {
                 double T;
-                double omega = -7.28e-7, E = 70e9, nu = .27;
+                double omega = constant::anode.omega, E = constant::anode.E, nu = constant::anode.nu;
                 if (settings::calc_temperature) {
                     T = u(dof.get_dof(x, 4), 0);
                 } else {
@@ -182,7 +181,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
 
             if (mesh.cathode_nodes.contains(x)) {
                 double T;
-                double omega = 4e-6, E = 30e9, nu = .3;
+                double omega = constant::cathode.omega, E = constant::cathode.E, nu = constant::cathode.nu;
                 if (settings::calc_temperature) {
                     T = u(dof.get_dof(x, 4), 0);
                 } else {

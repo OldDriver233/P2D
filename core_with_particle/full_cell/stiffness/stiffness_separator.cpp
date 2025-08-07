@@ -32,14 +32,14 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     }
 
     double dt = this->st->dt_now;
-    double eff_mat = std::pow(constant::epsilon_e_sep, constant::bruggeman);
-    double d_ref = constant::de_sep;
+    double eff_mat = std::pow(constant::separator.epsilon_e, constant::bruggeman);
+    double d_ref = constant::separator.D_e;
     //double d_eff = constant::de_sep / d_ref * eff_mat;
-    double epsilon = constant::epsilon_e_sep;
+    double epsilon = constant::separator.epsilon_e;
     double ce_int = constant::ce_int;
     double k_ref = constant::k_ref;
     double eff_1 = 1 / dt * constant::l_ref * constant::l_ref / d_ref;
-    const double rho = constant::density_sep, cap = constant::capacity_sep, lambda = constant::lambda_sep;
+    const double rho = constant::separator.density, cap = constant::separator.capacity, lambda = constant::separator.lambda;
 
     std::vector<double> arr_kappa(n * mesh.separator_elements.size());
     std::vector<double> arr_d_kappa(n * mesh.separator_elements.size());
@@ -110,7 +110,7 @@ void stiffness_separator::generate(const Eigen::Ref<MatrixXd> &u,
     if (!settings::is_solid_battery) {
         if (!settings::use_customize_diffuse) {
             for (int i = 0; i < n * mesh.separator_elements.size(); i++) {
-                arr_d_eff[i] = constant::de_sep / d_ref * eff_mat;
+                arr_d_eff[i] = constant::separator.D_e / d_ref * eff_mat;
             }
         } else {
             //VectorXd d_l = this->pfm->electrolyte_diffuse.initial_node->eval(vars);

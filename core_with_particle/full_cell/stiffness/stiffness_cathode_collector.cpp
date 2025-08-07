@@ -9,7 +9,7 @@ void stiffness_cathode_collector::generate(const Eigen::Ref<MatrixXd> &u,
     const double I_app = constant::I_app;
     const int dim = get_dim(mesh.p_type), n = get_nodes(mesh.p_type);
     std::size_t node_cnt = mesh.node_count;
-    const double rho = constant::density_ca_collector, cap = constant::capacity_ca_collector, lambda = constant::lambda_ca_collector, sigma = constant::sigma_ca_collector;
+    const double rho = constant::cathode_cc.density, cap = constant::cathode_cc.capacity, lambda = constant::cathode_cc.lambda, sigma = constant::cathode_cc.sigma;
 
     MatrixXd xs;
     MatrixXd w;
