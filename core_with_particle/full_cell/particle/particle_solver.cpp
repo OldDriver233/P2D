@@ -98,6 +98,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                     T = constant::t_ref;
                 }
                 double Z = 2 * omega * omega * E / (9 * constant::R * T * (1 - nu));
+                double D = D_s * exp(constant::anode.diffuse_energy / constant::R * (-1 / T + 1 / constant::t_ref));
 
                 int iter_round = 0;
                 double norm = 1, rel_norm = 1;
@@ -119,11 +120,9 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                         VectorXd e_b = VectorXd::Zero(n);
 
                         for (int j = 0; j < n; j++) {
-                            MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
-                            VectorXd dNds = get_shape_deriv_at<dim, n>(xs.row(j).transpose());
-                            VectorXd J = coords * dNds;
-                            double det_J = J.determinant();
-                            MatrixXd dN = dNds * J.inverse();
+                            MatrixXd N = cached_N[i * n + j];
+                            double det_J = cached_J[i * n + j];
+                            MatrixXd dN = cached_dN[i * n + j];
                             MatrixXd N_T = N.transpose();
                             MatrixXd dN_T = dN.transpose();
 
@@ -134,8 +133,8 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                             double ele_c = (N_T * e_ss).value();
 
                             double eff_1 = R_s * R_s / D_sref;
-                            double eff_2 = D_s / D_sref;
-                            double eff_3 = D_s / D_sref * Z * c_max;
+                            double eff_2 = D / D_sref;
+                            double eff_3 = D / D_sref * Z * c_max;
 
                             e_k += N * N_T * x * x * w(j) * det_J * eff_1 / dt;
                             e_b += N * N_T * x * x * w(j) * det_J * eff_1 * e_dss / dt;
@@ -153,7 +152,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                         }
                     }
                     K.setFromTriplets(k_coeff.begin(), k_coeff.end());
-                    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+                    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
                     solver.compute(K);
                     j_coeff = solver.solve(pre_j_coeff);
                     ret = j_coeff(constant::particle_segment);
@@ -188,6 +187,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                     T = constant::t_ref;
                 }
                 double Z = 2 * omega * omega * E / (9 * constant::R * T * (1 - nu));
+                double D = D_s * exp(constant::cathode.diffuse_energy / constant::R * (-1 / T + 1 / constant::t_ref));
 
                 int iter_round = 0;
                 double norm = 1, rel_norm = 1;
@@ -209,11 +209,9 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                         VectorXd e_b = VectorXd::Zero(n);
 
                         for (int j = 0; j < n; j++) {
-                            MatrixXd N = get_shape_func_at<dim, n>(xs.row(j).transpose());
-                            VectorXd dNds = get_shape_deriv_at<dim, n>(xs.row(j).transpose());
-                            VectorXd J = coords * dNds;
-                            double det_J = J.determinant();
-                            MatrixXd dN = dNds * J.inverse();
+                            MatrixXd N = cached_N[i * n + j];
+                            double det_J = cached_J[i * n + j];
+                            MatrixXd dN = cached_dN[i * n + j];
                             MatrixXd N_T = N.transpose();
                             MatrixXd dN_T = dN.transpose();
 
@@ -224,8 +222,8 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                             double ele_c = (N_T * e_ss).value();
 
                             double eff_1 = R_s * R_s / D_sref;
-                            double eff_2 = D_s / D_sref;
-                            double eff_3 = D_s / D_sref * Z * c_max;
+                            double eff_2 = D / D_sref;
+                            double eff_3 = D / D_sref * Z * c_max;
 
                             e_k += N * N_T * x * x * w(j) * det_J * eff_1 / dt;
                             e_b += N * N_T * x * x * w(j) * det_J * eff_1 * e_dss / dt;
@@ -243,7 +241,7 @@ double particle_solver::calc_stress(Eigen::Ref<MatrixXd> c_s, const Eigen::Ref<M
                         }
                     }
                     K.setFromTriplets(k_coeff.begin(), k_coeff.end());
-                    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+                    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
                     solver.compute(K);
                     j_coeff = solver.solve(pre_j_coeff);
                     ret = j_coeff(constant::particle_segment);

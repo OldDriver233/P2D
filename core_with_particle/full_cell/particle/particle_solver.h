@@ -3,6 +3,7 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/SparseLU>
+#include <eigen3/Eigen/SparseCholesky>
 #include <iostream>
 #include <ostream>
 #include "../../constants/constant.h"
@@ -32,6 +33,9 @@ public:
     const double c_max;
     const double R_s;
     StepControl* step_control;
+    std::vector<MatrixXd> cached_N;
+    std::vector<MatrixXd> cached_dN;
+    std::vector<double> cached_J;
 
     particle_solver(const VectorXd& coord, const double D_s, const double c_max, const double r_p, StepControl* st): point_coord(coord), D_s(D_s), D_sref(D_s), c_max(c_max), R_s(r_p), step_control(st) {
         const int dim = 1, n = 2;
@@ -77,6 +81,10 @@ public:
                 MatrixXd dN = dNds * J.inverse();
                 MatrixXd N_T = N.transpose();
                 MatrixXd dN_T = dN.transpose();
+
+                cached_N.push_back(N);
+                cached_dN.push_back(dN);
+                cached_J.push_back(det_J);
 
 
                 double s = xs(j);
