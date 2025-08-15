@@ -5,7 +5,7 @@
 #include "mesh/mesh_reader.h"
 #include "mesh/dof_assigner.h"
 #include "io/coord_reader.h"
-#include "io/redis_connector.h"
+//#include "io/redis_connector.h"
 #include "io/settings/settings.h"
 #include <eigen3/Eigen/Dense>
 #include <ostream>

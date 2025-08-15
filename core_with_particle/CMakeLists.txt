@@ -36,7 +36,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 find_package(Eigen3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(autodiff REQUIRED)
+#find_package(autodiff REQUIRED)
 
 INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(/usr/include/suitesparse)
@@ -61,8 +61,8 @@ add_executable(fem main.cpp
         full_cell/particle/particle_solver.cpp
         functions/parser/parser.cpp
         functions/functions.h
-        io/redis_connector.h
-        io/redis_connector.cpp
+        #io/redis_connector.h
+        #io/redis_connector.cpp
         io/settings/settings.cpp
         io/output/output_manager.h
         io/output/output_manager.cpp
@@ -91,13 +91,18 @@ if (USE_MKL)
         #message(ERROR ${CMAKE_CXX_FLAGS})
 endif()
 
-find_path(HIREDIS_HEADER hiredis)
-target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
+#find_path(HIREDIS_HEADER hiredis)
+#target_include_directories(fem PUBLIC ${HIREDIS_HEADER})
 
-find_library(HIREDIS_LIB hiredis)
+#find_library(HIREDIS_LIB hiredis)
 
 if(NOT IS_MACOS)
-target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so")
+        execute_process(COMMAND llvm-config --cxxflags --ldflags --system-libs --libs core
+                COMMAND tr "\n" " "
+                OUTPUT_VARIABLE flags)
+
+        set(CMAKE_CXX_FLAGS "${flags} ${CMAKE_CXX_FLAGS}")
+        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so" "libgmsh.so")
 else()
         execute_process(COMMAND /opt/homebrew/Cellar/llvm/20.1.6/bin/llvm-config --cxxflags --ldflags --system-libs --libs core
                 COMMAND tr "\n" " "
