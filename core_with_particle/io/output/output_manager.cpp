@@ -1,5 +1,6 @@
 #include "output_manager.h"
 #include <fstream>
+#include <iomanip>
 
 void output_manager::snapshot(double timestamp, const Eigen::Ref<VectorXd> &u, int dof_category) {
     this->times.push_back(timestamp);
