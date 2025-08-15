@@ -4,6 +4,7 @@
 #include <map>
 #include <llvm/Transforms/Scalar/LoopPassManager.h>
 
+#undef I
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
@@ -17,6 +18,7 @@
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/LoopInstSimplify.h"
 #include "llvm/Transforms/Scalar/SROA.h"
+#define I _Complex_I
 #include "jit.h"
 
 using namespace llvm;

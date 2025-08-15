@@ -60,7 +60,7 @@ struct pre_calc_shapes {
                     }
                 }
 
-                MatrixXd B(dim_voigt, dim * n);
+                MatrixXd B = MatrixXd::Zero(dim_voigt, dim * n);
                 if (dim == 2) {
                     for (int k = 0; k < 2; k++) {
                         for (int l = 0; l < n; l++) {

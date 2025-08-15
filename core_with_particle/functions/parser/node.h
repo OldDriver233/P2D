@@ -5,6 +5,7 @@
 #include <memory>
 #include <iostream>
 
+#undef I
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
@@ -12,6 +13,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "context.h"
+#define I _Complex_I
 
 struct CompileContext;
 using namespace llvm;

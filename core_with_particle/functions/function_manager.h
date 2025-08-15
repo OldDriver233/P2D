@@ -4,10 +4,12 @@
 #include "../io/settings/settings.h"
 #include "./parser/jit.h"
 #include "./parser/context.h"
+#undef I
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/Verifier.h"
+#define I _Complex_I
 
 class FunctionManager{
 public:

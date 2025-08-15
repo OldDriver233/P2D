@@ -102,7 +102,7 @@ if(NOT IS_MACOS)
                 OUTPUT_VARIABLE flags)
 
         set(CMAKE_CXX_FLAGS "${flags} ${CMAKE_CXX_FLAGS}")
-        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so" "libgmsh.so")
+        target_link_libraries(fem PRIVATE nlohmann_json::nlohmann_json ${HIREDIS_LIB} "libstdc++.so" "libumfpack.so" "libblas.so" "libgmsh.so" "liblapacke.so")
 else()
         execute_process(COMMAND /opt/homebrew/Cellar/llvm/20.1.6/bin/llvm-config --cxxflags --ldflags --system-libs --libs core
                 COMMAND tr "\n" " "
