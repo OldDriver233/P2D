@@ -29,13 +29,13 @@ public:
 
     void format() {
         if(type == TokenType::EOL) {
-            std::cout<<std::format("[EOL] {}\n", static_cast<int>(type));
+            //std::cout<<std::format("[EOL] {}\n", static_cast<int>(type));
         }
         else if(type == TokenType::END) {
-            std::cout<<std::format("[END] {}\n", static_cast<int>(type));
+            //std::cout<<std::format("[END] {}\n", static_cast<int>(type));
         }
         else {
-            std::cout<<std::format("{} {}\n", sv, static_cast<int>(type));
+            //std::cout<<std::format("{} {}\n", sv, static_cast<int>(type));
         }
     }
 };

@@ -2,12 +2,17 @@
 #define FEM_INTEGRATION_SHAPES_H
 #include <eigen3/Eigen/Dense>
 #include <cmath>
-#include <numbers>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-using std::numbers::inv_sqrt3_v;
-using std::numbers::sqrt3_v;
+#ifdef __cpp_lib_math_constants
+#include <numbers>
+const double inv_sqrt3_v = std::numbers::inv_sqrt3_v<double>;
+const double sqrt3_v = std::numbers::sqrt3_v<double>;
+#else
+const double inv_sqrt3_v = 0.577350269189626;
+const double sqrt3_v = 1.73205080756888;
+#endif
 
 template<int dim, int N>
 inline int get_integration_point_count() {
@@ -25,8 +30,8 @@ inline MatrixXd get_integration_point() {
         if constexpr (N == 2) {
             // line, 2 pts
             m <<
-                -inv_sqrt3_v<double>,
-                inv_sqrt3_v<double>;
+                -inv_sqrt3_v,
+                inv_sqrt3_v;
         } else if constexpr (N == 3) {
             // line, 3 pts
             m <<
@@ -43,10 +48,10 @@ inline MatrixXd get_integration_point() {
                 0.2, 0.6;
         } else if constexpr (N == 4) {
             m <<
-                -inv_sqrt3_v<double>, -inv_sqrt3_v<double>,
-                inv_sqrt3_v<double>, -inv_sqrt3_v<double>,
-                inv_sqrt3_v<double>, inv_sqrt3_v<double>,
-                -inv_sqrt3_v<double>, inv_sqrt3_v<double>;
+                -inv_sqrt3_v, -inv_sqrt3_v,
+                inv_sqrt3_v, -inv_sqrt3_v,
+                inv_sqrt3_v, inv_sqrt3_v,
+                -inv_sqrt3_v, inv_sqrt3_v;
         }
     }
     return m;
@@ -91,8 +96,8 @@ inline MatrixXd get_extrapolation_weight() {
 
     if constexpr (dim == 1) {
         if constexpr (N == 2) {
-            m << sqrt3_v<double> / 2 + 0.5, 0.5 - sqrt3_v<double> / 2,
-                 0.5 - sqrt3_v<double> / 2, sqrt3_v<double> / 2 + 0.5;
+            m << sqrt3_v / 2 + 0.5, 0.5 - sqrt3_v / 2,
+                 0.5 - sqrt3_v / 2, sqrt3_v / 2 + 0.5;
         }
     } else if constexpr (dim == 2) {
         if constexpr (N == 3) {
@@ -100,10 +105,10 @@ inline MatrixXd get_extrapolation_weight() {
                  -0.5, 2, -0.5,
                  -0.5, -0.5, 2;
         } else if constexpr (N == 4) {
-            m << sqrt3_v<double> / 2 + 1, -0.5, 1 - sqrt3_v<double> / 2, -0.5,
-                 -0.5, sqrt3_v<double> / 2 + 1, -0.5, 1 - sqrt3_v<double> / 2,
-                 1 - sqrt3_v<double> / 2, -0.5, sqrt3_v<double> / 2 + 1, -0.5,
-                 -0.5, 1 - sqrt3_v<double> / 2, -0.5, sqrt3_v<double> / 2 + 1;
+            m << sqrt3_v / 2 + 1, -0.5, 1 - sqrt3_v / 2, -0.5,
+                 -0.5, sqrt3_v / 2 + 1, -0.5, 1 - sqrt3_v / 2,
+                 1 - sqrt3_v / 2, -0.5, sqrt3_v / 2 + 1, -0.5,
+                 -0.5, 1 - sqrt3_v / 2, -0.5, sqrt3_v / 2 + 1;
         }
     }
     return m;
