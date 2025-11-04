@@ -8,7 +8,7 @@ void output_manager::snapshot(double timestamp, const Eigen::Ref<VectorXd> &u, i
     for (int i = 0; i < this->mesh.node_count; i++) {
         int dof_idx = this->dof.get_dof(i, dof_category);
         if (dof_idx == -1) {
-            val(i) = 0;
+            val(i) = NAN;
         } else {
             val(i) = u(dof_idx);
         }
