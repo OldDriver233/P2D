@@ -62,6 +62,7 @@ void full_cell_solver::apply_boundary(Eigen::Ref<MatrixXd> u, Eigen::SparseMatri
 
 void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, std::vector<double>& v_stress, double time, bool do_print) {
     int iter_time = 0;
+    double dl_delta = 1;
     double first_norm, first_delta_norm;
     double res_norm = 1.0;
     double rel_tol = 1.0;
@@ -80,7 +81,13 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, st
         stress_mat.setFromTriplets(local_stress_mat_coeff.begin(), local_stress_mat_coeff.end());
     }
 
-    while (iter_time < iter && rel_delta > tolerance) {
+    if (step == 0) {
+        iter = 50;
+    } else {
+        iter = 20;
+    }
+
+    while (iter_time < iter && rel_tol > tolerance) {
         k.setZero();
         VectorXd res = VectorXd::Zero(dof.dof_cnt);
         coeff.clear();
@@ -106,51 +113,81 @@ void full_cell_solver::calc(Eigen::Ref<MatrixXd> u, Eigen::Ref<MatrixXd> c_s, st
         apply_boundary(u, k, res, false);
 
         VectorXd delta;
-        if (step != 0 || true) {
+        if (step != 0) {
+            // Standard Newton solver
             solver.compute(k);
             delta = -solver.solve(res);
             std::cout<<std::setw(12);
+            du += delta;
+            u += delta;
         } else {
-            /*
+            // Dogleg trust-region solver
             solver.compute(k);
-            VectorXd direction = -solver.solve(res);
-            double alpha = 0.01, prev_alpha = 1;
-            int inner_iter = 0;
-
-            while (abs(alpha - prev_alpha) > 0.005 && inner_iter < 50) {
-                prev_alpha = alpha;
-                k.setZero();
-                res = VectorXd::Zero(dof.dof_cnt);
-                coeff.clear();
-                VectorXd u_a = u + alpha * direction;
-                VectorXd du_a = du + alpha * direction;
-
-                if (settings::calc_temperature) {
-                    this->anode.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                    this->sep.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                    this->cathode.generate<true>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                    this->anode_collector.generate(u_a, du_a, c_s, coeff, res, step == 0);
-                    this->cathode_collector.generate(u_a, du_a, c_s, coeff, res, step == 0);
-                } else {
-                    this->anode.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                    this->sep.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                    this->cathode.generate<false>(u_a, du_a, c_s, coeff, res, step == 0, temp);
-                }
-                k.setFromTriplets(coeff.begin(), coeff.end());
-                apply_boundary(u_a, k, res, false);
-
-                alpha = alpha - direction.dot(res) / (direction.transpose().dot(k * direction));
-
-                std::cout<<alpha<<" "<<prev_alpha<<" "<<res.norm()<<std::endl;
-                inner_iter++;
+            VectorXd d_gn = -solver.solve(res);
+            VectorXd g = k.transpose() * res;
+            double norm_1 = g.norm();
+            double norm_2 = (k * g).norm();
+            double alpha = norm_1 * norm_1 / norm_2 / norm_2;
+            VectorXd d_sd = -alpha * g;
+            double tau;
+            if (d_gn.norm() < dl_delta) {
+                tau = 2;
+            } else if (d_sd.norm() > dl_delta) {
+                tau = dl_delta / d_sd.norm();
+            } else {
+                VectorXd t = d_gn - d_sd;
+                double norm_t = t.norm();
+                double norm_d_sd = d_sd.norm();
+                double dot_prod = d_sd.dot(t);
+                tau = 1 + (-dot_prod + sqrt(dot_prod * dot_prod - norm_t * norm_t * (norm_d_sd * norm_d_sd - dl_delta * dl_delta))) / (norm_t * norm_t);
+            }
+            VectorXd d_dl;
+            if (tau >= 0 && tau <= 1) {
+                d_dl = tau * d_sd;
+            } else {
+                d_dl = d_sd + (tau - 1) * (d_gn - d_sd);
             }
 
-            alpha = std::clamp(alpha, .001, 1.0);
-            delta = direction * alpha;
-            */
+            double f_norm = res.norm();
+            VectorXd u_new = u + d_dl;
+            VectorXd du_new = du + d_dl;
+
+            VectorXd res_new = VectorXd::Zero(dof.dof_cnt);
+            Eigen::SparseMatrix<double> k_new(dof.dof_cnt, dof.dof_cnt);
+            k_new.setZero();
+            coeff.clear();
+            temp.clear();
+            if (settings::calc_temperature) {
+                this->anode.generate<true>(u_new, du_new, c_s, v_stress, avg_conc, coeff, res_new, step == 0, temp);
+                this->sep.generate<true>(u_new, du_new, c_s, coeff, res_new, step == 0, temp);
+                this->cathode.generate<true>(u_new, du_new, c_s, v_stress, avg_conc, coeff, res_new, step == 0, temp);
+                this->anode_collector.generate(u_new, du_new, c_s, coeff, res_new, step == 0);
+                this->cathode_collector.generate(u_new, du_new, c_s, coeff, res_new, step == 0);
+            } else {
+                this->anode.generate<false>(u_new, du_new, c_s, v_stress, avg_conc, coeff, res_new, step == 0, temp);
+                this->sep.generate<false>(u_new, du_new, c_s, coeff, res_new, step == 0, temp);
+                this->cathode.generate<false>(u_new, du_new, c_s, v_stress, avg_conc, coeff, res_new, step == 0, temp);
+            }
+            if (settings::stress_analysis) coeff.insert(coeff.end(), stress_mat_coeff.begin(), stress_mat_coeff.end());
+            k_new.setFromTriplets(coeff.begin(), coeff.end());
+            if (settings::stress_analysis) stress.generate_residue(u, avg_conc, res_new, stress_mat);
+            apply_boundary(u, k_new, res_new, false);
+
+            double f_new_norm = res_new.norm();
+            double m_norm = (res + k * d_dl).norm();
+            double rho = (f_norm * f_norm - f_new_norm * f_new_norm) / (f_norm * f_norm - m_norm * m_norm);
+            std::cout<<rho<<" "<<dl_delta<<" "<<f_norm<<" "<<f_new_norm<<std::endl;
+            if (rho > 0) {
+                delta = u_new - u;
+                u = u_new;
+                du = du_new;
+            }
+            if (rho > .75) {
+                dl_delta = std::max(dl_delta, 3 * d_dl.norm());
+            } else if (rho < .25) {
+                dl_delta /= 2;
+            }
         }
-        du += delta;
-        u += delta;
         //std::cout<<res.transpose()<<std::endl;
         //std::cout<<delta.transpose()<<std::endl;
         //std::cout<<u.transpose()<<std::endl;

@@ -27,7 +27,7 @@ public:
     const mesh_reader& mesh;
     const dof_assigner& dof;
     pre_calc_shapes shapes;
-    const int iter = 20;
+    int iter = 20;
     const double tolerance = constant::tolerance;
     //int an, ca, ancoll, cacoll;
     particle_solver anode_particle, cathode_particle;

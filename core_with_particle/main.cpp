@@ -43,14 +43,14 @@ void calc_cell_v2() {
 
     for (int i = 0; i < mesh.node_count; i++) {
         if (mesh.anode_nodes.contains(i) || mesh.cathode_nodes.contains(i) || mesh.separator_nodes.contains(i)) {
-            u(dof.get_dof(i, 0)) = -uoc<1>(constant::anode.c_int / constant::anode.c_max) - 0.1;
+            u(dof.get_dof(i, 0)) = -uoc<1>(constant::anode.c_int / constant::anode.c_max);
             //u(dof.get_dof(i, 0)) = -0.3;
             if (!settings::is_solid_battery) u(dof.get_dof(i, 1)) = 1;
             if (mesh.anode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = 0;
             } else if (mesh.cathode_nodes.contains(i)) {
                 u(dof.get_dof(i, 2)) = uoc<2>(constant::cathode.c_int / constant::cathode.c_max) - uoc<1>(
-                                           constant::anode.c_int / constant::anode.c_max) - 0.3;
+                                           constant::anode.c_int / constant::anode.c_max);
                 //u(dof.get_dof(i, 2)) = 3.1;
             }
         }
