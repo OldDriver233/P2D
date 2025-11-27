@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include "../../mesh/mesh_reader.h"
 #include "../../mesh/dof_assigner.h"
 

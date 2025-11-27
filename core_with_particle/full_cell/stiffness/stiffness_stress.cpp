@@ -68,15 +68,31 @@ void stiffness_stress::generate(std::vector<Eigen::Triplet<double> > &t, std::ve
         for (int j = 0; j < n * dim; j++) {
             std::size_t id_l = mesh.elements[e * n + j / dim];
             std::size_t dof_l = 5 + j % dim;
+            std::size_t xyz_l = dof_l - 5;
             for (int k = 0; k < n * dim; k++) {
                 std::size_t id_r = mesh.elements[e * n + k / dim];
                 std::size_t dof_r = 5 + k % dim;
-                if (!mesh.anode_cc_wall_nodes.contains(id_l) && !mesh.anode_cc_wall_nodes.contains(id_r)) {
+                std::size_t xyz_r = dof_r - 5;
+                if (!mesh.fixed_boundary_nodes.contains(id_l)
+                    && !mesh.fixed_boundary_nodes.contains(id_r)
+                    && !(mesh.x_fixed_boundary_nodes.contains(id_l) && xyz_l == 0)
+                    && !(mesh.x_fixed_boundary_nodes.contains(id_r) && xyz_r == 0)
+                    && !(mesh.y_fixed_boundary_nodes.contains(id_l) && xyz_l == 1)
+                    && !(mesh.y_fixed_boundary_nodes.contains(id_r) && xyz_r == 1)
+                    ) {
                     t.emplace_back(dof.get_dof(id_l, dof_l), dof.get_dof(id_r, dof_r), K(j, k));
                     l.emplace_back(id_l * dim + dof_l - 5, id_r * dim + dof_r - 5, K(j, k));
                 }
             }
-            if (mesh.anode_cc_wall_nodes.contains(id_l)) {
+            if (mesh.fixed_boundary_nodes.contains(id_l)) {
+                t.emplace_back(dof.get_dof(id_l, dof_l), dof.get_dof(id_l, dof_l), 1);
+                l.emplace_back(id_l * dim + dof_l - 5, id_l * dim + dof_l - 5, 1);
+            }
+            if (mesh.x_fixed_boundary_nodes.contains(id_l) && xyz_l == 0) {
+                t.emplace_back(dof.get_dof(id_l, dof_l), dof.get_dof(id_l, dof_l), 1);
+                l.emplace_back(id_l * dim + dof_l - 5, id_l * dim + dof_l - 5, 1);
+            }
+            if (mesh.y_fixed_boundary_nodes.contains(id_l) && xyz_l == 1) {
                 t.emplace_back(dof.get_dof(id_l, dof_l), dof.get_dof(id_l, dof_l), 1);
                 l.emplace_back(id_l * dim + dof_l - 5, id_l * dim + dof_l - 5, 1);
             }
@@ -159,7 +175,10 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
             for (int j = 0; j < n * dim; j++) {
                 std::size_t id_l = mesh.elements[e * n + j / dim];
                 std::size_t dof_l = 5 + j % dim;
-                if (!mesh.anode_cc_wall_nodes.contains(id_l)) {
+                std::size_t xyz_l = dof_l - 5;
+                if (!mesh.fixed_boundary_nodes.contains(id_l)
+                    && !(mesh.x_fixed_boundary_nodes.contains(id_l) && xyz_l == 0)
+                    && !(mesh.y_fixed_boundary_nodes.contains(id_l) && xyz_l == 1)) {
                     load(id_l * dim + dof_l - 5) += e_load(j);
                 }
             }
@@ -197,7 +216,10 @@ void stiffness_stress::generate_residue(const Eigen::Ref<MatrixXd> &u, const std
             for (int j = 0; j < n * dim; j++) {
                 std::size_t id_l = mesh.elements[e * n + j / dim];
                 std::size_t dof_l = 5 + j % dim;
-                if (!mesh.anode_cc_wall_nodes.contains(id_l)) {
+                std::size_t xyz_l = dof_l - 5;
+                if (!mesh.fixed_boundary_nodes.contains(id_l)
+                    && !(mesh.x_fixed_boundary_nodes.contains(id_l) && xyz_l == 0)
+                    && !(mesh.y_fixed_boundary_nodes.contains(id_l) && xyz_l == 1)) {
                     load(id_l * dim + dof_l - 5) += e_load(j);
                 }
             }

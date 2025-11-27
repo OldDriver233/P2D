@@ -5,7 +5,7 @@
 #include "../../mesh/mesh_reader.h"
 #include "../../mesh/dof_assigner.h"
 #include "pre_calc.h"
-#include <Eigen/Sparse>
+#include <eigen3/Eigen/Sparse>
 #include <utility>
 
 using Eigen::MatrixXd;

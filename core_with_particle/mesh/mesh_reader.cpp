@@ -1,5 +1,6 @@
 #include "mesh_reader.h"
 #include <iostream>
+#include <cassert>
 #include <algorithm>
 #include <ranges>
 
@@ -21,6 +22,7 @@ for (auto i = 0; i < elem_tag[0].size(); i++){\
 mesh_reader::mesh_reader(const std::string &filename) {
     gmsh::initialize();
     gmsh::open(filename);
+    std::set<std::string> ent_names;
 
     gmsh::model::mesh::getMaxNodeTag(node_count);
 
@@ -38,6 +40,20 @@ mesh_reader::mesh_reader(const std::string &filename) {
         case 3: this->p_type = Primitive::Quad4; this->coord = MatrixXd::Zero(2, node_count); break;
         default:
             std::cerr<<"Unimplemented shape\n";
+    }
+
+    if (this->p_type == Primitive::Line2) {
+        gmsh::model::getEntities(tags, 0);
+    } else {
+        gmsh::model::getEntities(tags, 1);
+    }
+
+    for (auto x: tags) {
+        std::string name;
+        gmsh::model::getPhysicalName(1, x.second, name);
+        if (!name.empty()) {
+            ent_names.insert(name);
+        }
     }
 
     GET_ELEMENT(anode)
@@ -82,6 +98,46 @@ mesh_reader::mesh_reader(const std::string &filename) {
         x -= 1;
         this->cathode_cc_wall_nodes.emplace(x);
     }
+    if (ent_names.contains("fixed")) {
+        gmsh::model::getEntitiesForPhysicalName("fixed", tags);
+        for (auto x: tags) {
+            dim = x.first, tag = x.second;
+            gmsh::model::mesh::getElements(e_type, elem_tag, node_tag, dim, tag);\
+            assert(e_type.size() == 1);
+            this->fixed_boundary.insert(this->fixed_boundary.end(), node_tag[0].begin(), node_tag[0].end());
+        }
+        for (auto &x: this->fixed_boundary) {
+            x -= 1;
+            this->fixed_boundary_nodes.emplace(x);
+        }
+    }
+    if (ent_names.contains("x_fixed")) {
+        gmsh::model::getEntitiesForPhysicalName("x_fixed", tags);
+        for (auto x: tags) {
+            dim = x.first, tag = x.second;
+            gmsh::model::mesh::getElements(e_type, elem_tag, node_tag, dim, tag);\
+            assert(e_type.size() == 1);
+            this->x_fixed_boundary.insert(this->x_fixed_boundary.end(), node_tag[0].begin(), node_tag[0].end());
+        }
+        for (auto &x: this->x_fixed_boundary) {
+            x -= 1;
+            this->x_fixed_boundary_nodes.emplace(x);
+        }
+    }
+    if (ent_names.contains("y_fixed")) {
+        gmsh::model::getEntitiesForPhysicalName("y_fixed", tags);
+        for (auto x: tags) {
+            dim = x.first, tag = x.second;
+            gmsh::model::mesh::getElements(e_type, elem_tag, node_tag, dim, tag);\
+            assert(e_type.size() == 1);
+            this->y_fixed_boundary.insert(this->y_fixed_boundary.end(), node_tag[0].begin(), node_tag[0].end());
+        }
+        for (auto &x: this->y_fixed_boundary) {
+            x -= 1;
+            this->y_fixed_boundary_nodes.emplace(x);
+        }
+    }
+
 
     int idx = 0;
     this->node_to_idx = std::vector<std::size_t>(node_count, -1);

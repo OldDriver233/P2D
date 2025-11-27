@@ -1,7 +1,7 @@
 #ifndef PRE_CALC_H
 #define PRE_CALC_H
 #include <vector>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <iostream>
 
 #include "../../integration/integration_shapes.h"

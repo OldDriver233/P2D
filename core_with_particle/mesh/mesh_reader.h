@@ -1,7 +1,7 @@
 #ifndef MESH_READER_H
 #define MESH_READER_H
 #include <gmsh.h>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <set>
 #include <map>
 #include "../shaping/primitive_type.h"
@@ -18,6 +18,9 @@ public:
     std::vector<std::size_t> cathode_wall;
     std::vector<std::size_t> anode_cc_wall;
     std::vector<std::size_t> cathode_cc_wall;
+    std::vector<std::size_t> fixed_boundary;
+    std::vector<std::size_t> x_fixed_boundary;
+    std::vector<std::size_t> y_fixed_boundary;
     std::vector<std::size_t> anode_cc_elements;
     std::vector<std::size_t> cathode_cc_elements;
     std::vector<std::size_t> anode_elements;
@@ -32,6 +35,9 @@ public:
     std::set<std::size_t> cathode_wall_nodes;
     std::set<std::size_t> anode_cc_wall_nodes;
     std::set<std::size_t> cathode_cc_wall_nodes;
+    std::set<std::size_t> fixed_boundary_nodes;
+    std::set<std::size_t> x_fixed_boundary_nodes;
+    std::set<std::size_t> y_fixed_boundary_nodes;
     std::set<std::size_t> anode_cc_element_set;
     std::set<std::size_t> cathode_cc_element_set;
     std::set<std::size_t> anode_element_set;
