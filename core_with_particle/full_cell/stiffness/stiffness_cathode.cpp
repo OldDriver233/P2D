@@ -142,7 +142,7 @@ void stiffness_cathode::generate(const Eigen::Ref<MatrixXd> &u,
                 t = u_ptr[dof.get_dof(x, 4)];
             }
             arr_uoc[i] = this->pfm->f_uoc_cathode(c_ss[i]);
-            arr_eta[i] = u_ptr[dof.get_dof(x, 2)] - u_ptr[dof.get_dof(x, 0)] - arr_uoc[i];
+            arr_eta[i] = u_ptr[dof.get_dof(x, 2)] - u_ptr[dof.get_dof(x, 0)] - arr_uoc[i] - omega * stress_surf[i] / constant::F;
             arr_d_uoc[i] = this->pfm->f_d_uoc_cathode(c_ss[i]);
             arr_bv[i] = bv(arr_eta[i], t);
             arr_d_bv[i] = d_bv(arr_eta[i], t);

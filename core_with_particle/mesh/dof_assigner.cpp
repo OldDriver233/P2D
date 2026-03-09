@@ -9,7 +9,7 @@ void dof_assigner::gen_dof(const mesh_reader &mesh) {
     /// [phi_e_1 c_e_1 phi_s_1 q_1 T_1 ... T_n]
     particle_mapper = std::vector<size_t>(mesh.node_count, -1);
     std::size_t particle_cnt = 0;
-    const int dim = 2;
+    const int dim = get_dim(mesh.p_type);
 
     dof_per_node = 5;
     if (settings::stress_analysis) {
